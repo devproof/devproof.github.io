@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>API &amp; integrations — DEVPROOF.AI docs</title>
+<meta name="description" content="The Devproof AI gateway API (OpenAI and Anthropic compatible), the platform API, and client integrations.">
+<link rel="stylesheet" href="../assets/fonts.css">
+<link rel="stylesheet" href="../assets/site.css">
+<link rel="icon" type="image/svg+xml" href="../assets/mark.svg">
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="mark" viewBox="0 0 100 100">
+      <polygon points="30,9 70,9 91,50 70,91 30,91 9,50" fill="#fff" stroke="#1E5BC6" stroke-width="3" stroke-linejoin="round"/>
+      <polygon points="38,25 62,25 75,50 62,75 38,75 25,50" fill="none" stroke="#1E5BC6" stroke-width="1.3" stroke-linejoin="round" opacity=".3"/>
+      <path d="M35,51 L46,63 L67,37" fill="none" stroke="#E8641B" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="64.5" y="33.5" width="6.5" height="6.5" rx="1.2" fill="#E8641B"/>
+      <rect x="43" y="71.5" width="14" height="2.6" rx="1.3" fill="#1E5BC6"/>
+    </symbol>
+  </defs>
+</svg>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="lockup" href="../index.html">
+      <svg aria-hidden="true"><use href="#mark"/></svg>
+      <span>
+        <span class="lk-word">DEVPROOF<span class="ai">.AI</span></span>
+        <span class="lk-tag">Own your scalable AI</span>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="../index.html#agents">Managed agents</a>
+      <a href="../index.html#hosting">Model hosting</a>
+      <a href="../index.html#components">Components</a>
+      <a href="index.html">Docs</a>
+      <a class="gh" href="https://github.com/devproof/devproofai">GitHub ↗</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap docs-grid">
+  <aside class="docs-side" aria-label="Docs navigation">
+    <div class="k">Docs</div>
+    <a href="index.html">Getting started</a>
+    <a href="concepts.html">Concepts</a>
+    <a href="api.html" class="on">API &amp; integrations</a>
+    <div class="k">Elsewhere</div>
+    <a href="https://github.com/devproof/devproofai">Source on GitHub</a>
+  </aside>
+
+  <main class="docs-body">
+    <p class="eyebrow"><span class="eyebrow-line">Docs</span></p>
+    <h1>API &amp; integrations</h1>
+    <p class="lead">Two APIs: the <b>gateway</b> serves models in both major wire formats;
+      the <b>platform API</b> manages agents, sessions and everything around them.</p>
+
+    <h2 id="gateway">The gateway API</h2>
+    <p>Authenticate with a console-managed key (<code>dpk_…</code>). External keys always call a
+      <a href="concepts.html#serving">routing</a> by name — that's what makes budget rules
+      enforceable.</p>
+    <pre><code><span class="c"># OpenAI dialect</span>
+curl http://&lt;gateway&gt;/v1/chat/completions \
+  -H "Authorization: Bearer dpk_..." \
+  -d '{"model": "main",
+       "messages": [{"role": "user", "content": "Summarize this…"}]}'
+
+<span class="c"># Anthropic dialect — same key, same routing</span>
+curl http://&lt;gateway&gt;/v1/messages \
+  -H "Authorization: Bearer dpk_..." \
+  -H "anthropic-version: 2023-06-01" \
+  -d '{"model": "main", "max_tokens": 1024,
+       "messages": [{"role": "user", "content": "Summarize this…"}]}'</code></pre>
+    <p>Streaming, tool use and structured outputs work in both dialects, subject to what
+      the underlying model supports.</p>
+
+    <h3 id="clients">Point existing clients at it</h3>
+    <table>
+      <tr><th>Client</th><th>Change</th></tr>
+      <tr><td>OpenAI SDK (any language)</td><td><code>base_url</code> → your gateway, <code>api_key</code> → <code>dpk_…</code></td></tr>
+      <tr><td>Anthropic SDK</td><td><code>base_url</code> → your gateway, auth token → <code>dpk_…</code></td></tr>
+      <tr><td>Claude Code</td><td><code>ANTHROPIC_BASE_URL</code> + <code>ANTHROPIC_AUTH_TOKEN</code>, <code>--model &lt;routing&gt;</code></td></tr>
+      <tr><td>LangChain / LlamaIndex / Vercel AI SDK</td><td>the provider's base-URL setting</td></tr>
+    </table>
+
+    <h2 id="platform">The platform API</h2>
+    <p>A REST API under <code>/v1</code> on the control plane. Requests are scoped to a
+      workspace via the <code>X-Devproof-Workspace</code> header (defaults to the default
+      workspace). The console is built entirely on this API — anything it does, you can
+      script.</p>
+    <table>
+      <tr><th>Area</th><th>Endpoints</th></tr>
+      <tr><td>Workspaces</td><td><code>/v1/workspaces</code></td></tr>
+      <tr><td>Agents</td><td><code>/v1/agents</code>, <code>/v1/agents/:id/versions</code></td></tr>
+      <tr><td>Sessions</td><td><code>/v1/sessions</code>, <code>…/messages</code>, <code>…/events</code> (SSE), <code>…/interrupt</code></td></tr>
+      <tr><td>Files</td><td><code>/v1/files</code> (uploads, outputs, checkpoints)</td></tr>
+      <tr><td>Knowledge</td><td><code>/v1/skills</code>, <code>/v1/memory-stores</code>, <code>/v1/wikis</code></td></tr>
+      <tr><td>Environments &amp; secrets</td><td><code>/v1/environments</code>, <code>/v1/vaults</code></td></tr>
+      <tr><td>Serving</td><td><code>/v1/deployments</code>, <code>/v1/routings</code>, <code>/v1/pools</code>, catalog</td></tr>
+      <tr><td>Usage &amp; billing</td><td><code>/v1/usage</code>, <code>/v1/settings</code>, API keys</td></tr>
+    </table>
+
+    <h3 id="python">Python client</h3>
+    <p>A typed Python client (<code>pip install devproofai-client</code>, Apache-2.0)
+      covers the platform API — workspaces, agents, sessions, files, skills, memory
+      stores, wikis and vaults. An agent from zero to a streamed session:</p>
+    <pre><code>from devproof import Devproof
+
+client = Devproof()  <span class="c"># DEVPROOF_BASE_URL + DEVPROOF_API_KEY</span>
+
+env = client.environments.create(name="support-sandbox")
+agent = client.agents.create(name="support-triage", routing="main",
+                             environment_id=env["id"],
+                             tools=["Bash", "Read", "Write"])
+
+inbox = client.files.upload("inbox-week-30.csv")
+log = client.files.upload("m40-0233-diagnostics.log")
+
+session = client.sessions.create(agent=agent["id"],
+                                 prompt="Triage this inbox export.",
+                                 files=[inbox["id"], log["id"]])
+
+for event in client.sessions.events.stream(session["id"]):
+    print(event["type"], event.get("payload"))
+
+<span class="c"># collect what the agent produced (reply drafts, summaries, …)</span>
+for f in client.sessions.resources(session["id"])["outputFiles"]:
+    print(f["name"], f["size"])</code></pre>
+    <p>Follow-up turns are <code>client.sessions.send_message(session_id, prompt=…)</code> —
+      the session resumes from its checkpoint with full context.</p>
+
+    <h2 id="webhooks">Webhooks &amp; events</h2>
+    <p>Session lifecycle events (<code>session.completed</code>, <code>session.failed</code>, …)
+      can be delivered to your endpoints per workspace; the same events stream over SSE
+      for live UIs.</p>
+
+    <div class="note">This page is an overview, not a full reference — the complete,
+      current API surface lives in the repository alongside the code.</div>
+  </main>
+</div>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <a class="lockup" href="../index.html">
+      <svg aria-hidden="true"><use href="#mark"/></svg>
+      <span>
+        <span class="lk-word">DEVPROOF<span class="ai">.AI</span></span>
+        <span class="lk-tag">Own your scalable AI</span>
+      </span>
+    </a>
+    <nav aria-label="Footer">
+      <a href="../index.html#agents">Managed agents</a>
+      <a href="../index.html#hosting">Model hosting</a>
+      <a href="index.html">Docs</a>
+      <a href="https://github.com/devproof/devproofai">GitHub</a>
+      <a href="../contact.html">Contact</a>
+      <a href="../imprint.html">Imprint</a>
+      <a href="../privacy.html">Privacy</a>
+    </nav>
+    <div class="fine">© 2026 devproof.ai — own your scalable AI ∎</div>
+  </div>
+</footer>
+
+<script src="../assets/consent.js"></script>
+</body>
+</html>

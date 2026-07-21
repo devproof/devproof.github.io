@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DEVPROOF.AI — Own your scalable AI</title>
+<meta name="description" content="Self-hosted LLM serving and managed agents on Kubernetes. Run open models and autonomous agents on infrastructure you control.">
+<link rel="stylesheet" href="assets/fonts.css">
+<link rel="stylesheet" href="assets/site.css">
+<link rel="icon" type="image/svg+xml" href="assets/mark.svg">
+</head>
+<body>
+
+<!-- proofmark symbol: hexagon (scalable infra) + checkmark ending in the Q.E.D. tombstone + terminal cursor -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="mark" viewBox="0 0 100 100">
+      <style>
+        #mark .check{stroke-dasharray:66;stroke-dashoffset:66;animation:mkdraw 4s ease-in-out infinite}
+        #mark .qed{transform-box:fill-box;transform-origin:center;animation:mkpop 4s ease-in-out infinite}
+        #mark .cursor{animation:mkblink 1.1s steps(1) infinite}
+        @keyframes mkdraw{0%{stroke-dashoffset:66}22%{stroke-dashoffset:0}84%{stroke-dashoffset:0}100%{stroke-dashoffset:66}}
+        @keyframes mkpop{0%,22%{opacity:0;transform:scale(.2)}32%{opacity:1;transform:scale(1)}84%{opacity:1}94%,100%{opacity:0}}
+        @keyframes mkblink{0%,55%{opacity:1}56%,100%{opacity:0}}
+        @media (prefers-reduced-motion:reduce){#mark *{animation:none!important}
+          #mark .check{stroke-dashoffset:0}#mark .qed{opacity:1;transform:none}#mark .cursor{opacity:1}}
+      </style>
+      <polygon points="30,9 70,9 91,50 70,91 30,91 9,50" fill="#fff" stroke="#1E5BC6" stroke-width="3" stroke-linejoin="round"/>
+      <polygon points="38,25 62,25 75,50 62,75 38,75 25,50" fill="none" stroke="#1E5BC6" stroke-width="1.3" stroke-linejoin="round" opacity=".3"/>
+      <path class="check" d="M35,51 L46,63 L67,37" fill="none" stroke="#E8641B" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect class="qed" x="64.5" y="33.5" width="6.5" height="6.5" rx="1.2" fill="#E8641B"/>
+      <rect class="cursor" x="43" y="71.5" width="14" height="2.6" rx="1.3" fill="#1E5BC6"/>
+    </symbol>
+  </defs>
+</svg>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="lockup" href="#top">
+      <svg aria-hidden="true"><use href="#mark"/></svg>
+      <span>
+        <span class="lk-word">DEVPROOF<span class="ai">.AI</span></span>
+        <span class="lk-tag">Own your scalable AI</span>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="#agents">Managed agents</a>
+      <a href="#hosting">Model hosting</a>
+      <a href="#components">Components</a>
+      <a href="docs/index.html">Docs</a>
+      <a class="gh" href="https://github.com/devproof/devproofai">GitHub ↗</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- ── HERO ── -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <p class="eyebrow"><span class="eyebrow-line">Self-hosted · Open models · Your cluster</span></p>
+        <h1 class="hero-h">LLM serving +<br>managed agents<br>on Kubernetes<span class="dot">.</span></h1>
+        <p class="lead">Run frontier-class <b>open models</b> and <b>autonomous agents</b> on
+          infrastructure you control — from a laptop to a thousand-node cluster,
+          with OpenAI- and Anthropic-compatible APIs.</p>
+        <div class="btnrow">
+          <a class="btn" href="https://github.com/devproof/devproofai">View on GitHub ↗</a>
+          <a class="btn ghost" href="docs/index.html">Read the docs</a>
+        </div>
+      </div>
+      <div class="term" aria-label="Terminal demo">
+        <div class="term-bar"><i></i><i></i><i></i><span>your-cluster — devproof</span></div>
+        <div class="term-body">
+<span class="ln"><span class="p">$</span> helm install devproof oci://ghcr.io/devproof/devproofai-helm</span>
+<span class="ln"><span class="ok">  ✓</span> control plane · gateway · operator running</span>
+<span class="ln"><span class="p">$</span> kubectl port-forward svc/console 7090:7090 &amp;</span>
+<span class="ln"><span class="p">$</span> kubectl port-forward svc/gateway 14000:4000 &amp;</span>
+<span class="ln"><span class="p">$</span> open http://localhost:7090 <span class="c"># the console</span></span>
+<span class="ln"><span class="ok">  ✓</span> model deployed · routing <span class="c">"main"</span> · key minted</span>
+<span class="ln"><span class="p">$</span> export ANTHROPIC_BASE_URL=http://localhost:14000</span>
+<span class="ln"><span class="p">$</span> export ANTHROPIC_AUTH_TOKEN=dpk_…</span>
+<span class="ln"><span class="p">$</span> claude --model main -p <span class="c">"triage this week's inbox"</span></span>
+<span class="ln"><span class="ok">  ✓</span> agent finished · 3 reply drafts · wiki updated</span>
+<span class="ln"><span class="ok">  ✓</span> no vendor account · data stays on your cluster</span>
+<span class="ln"><span class="p">$</span> <span class="caret">▋</span></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── USE CASES ── -->
+  <section id="use-cases">
+    <div class="wrap">
+      <p class="eyebrow"><span class="eyebrow-line">Two ways in</span></p>
+      <h2 class="sec-head">One platform, two planes</h2>
+      <p class="lead">Some teams come for the agents, some for the serving. Both run on the
+        same Kubernetes control plane — use one, or both.</p>
+      <div class="cards2">
+        <a class="card" href="#agents">
+          <div class="k">Use case 01</div>
+          <h3><span class="accent">Managed agents</span></h3>
+          <p>Autonomous workers with sessions, tools, skills, memory and shared wikis —
+            each running in its <b>own sandboxed pod</b>, every step on the record.
+            Point them at your models, or start here and treat the model as a detail.</p>
+          <span class="go">Explore managed agents →</span>
+        </a>
+        <a class="card" href="#hosting">
+          <div class="k">Use case 02</div>
+          <h3><span class="accent">Model hosting</span></h3>
+          <p>Deploy open models like microservices: a curated catalog, one-click
+            provisioning, autoscaling, scale-to-zero, and <b>OpenAI + Anthropic
+            compatible endpoints</b> behind one gateway.</p>
+          <span class="go">Explore model hosting →</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── MANAGED AGENTS ── -->
+  <section id="agents">
+    <div class="wrap">
+      <p class="eyebrow"><span class="eyebrow-line">Use case 01 — Managed agents</span></p>
+      <h2 class="sec-head">Not a chatbot —<br>an autonomous worker</h2>
+      <p class="lead">A managed agent is a model given a <b>goal</b>, a set of <b>tools</b>, and the
+        freedom to take many steps to finish the job — it plans, runs code, checks its
+        own work, and repeats until it's done. Feed it <b>any files</b> — spreadsheets,
+        log files, diagnostics, screenshots, images — and package your procedures as
+        <b>skills</b> that guide how the work gets done.</p>
+
+      <div class="shot-block">
+        <div class="browser">
+          <div class="browser-bar"><i></i><i></i><i></i><span>devproof.ai / sessions — live, in real time</span></div>
+          <img src="assets/img/console-session-live.webp" alt="A live agent session recorded in real time: the transcript grows with thinking and tool calls, tokens and cost tick up, the agent delegates to a second agent, and the final result opens as rendered markdown." loading="lazy">
+        </div>
+        <p class="shot-cap">A real session, recorded live: the agent loads its triage skill, works an inbox
+          export plus a diagnostics log, consults the team wiki, delegates a knowledge-base
+          update — and the finished result opens as rendered markdown. Click any screenshot to expand.</p>
+      </div>
+
+      <div class="feat">
+        <div class="f"><h4>Isolated, secure session containers</h4>
+          <p>Every session runs in its own container with its own filesystem — no
+            internet unless the environment allows specific hosts, secrets injected from
+            credential vaults, never visible to the model or other tenants.</p></div>
+        <div class="f"><h4>Delegation</h4>
+          <p>Agents hand work to other agents as full child sessions — a triage agent
+            delegates to a librarian, and the transcript links parent and child.</p></div>
+        <div class="f"><h4>Full skill support</h4>
+          <p>Anthropic-style skill packages with progressive disclosure: agents see an
+            index and load only the files they need — versioned, shared per workspace.</p></div>
+        <div class="f"><h4>Full MCP support</h4>
+          <p>Connect any MCP server to an agent. Credentials come from the vault,
+            egress opens automatically for the server's hosts, and a bundled registry
+            covers common servers.</p></div>
+        <div class="f"><h4>Wikis &amp; memory</h4>
+          <p>Shared LLM wikis — many readers, exactly one writer agent — plus per-agent
+            memory stores that persist across sessions.</p></div>
+        <div class="f"><h4>Idle-to-zero economics</h4>
+          <p>Turns run as Kubernetes Jobs that cost nothing between messages. Sessions
+            checkpoint and resume — even after failures.</p></div>
+      </div>
+
+      <div class="shot-trio">
+        <figure style="margin:0">
+          <div class="browser">
+            <div class="browser-bar"><i></i><i></i><i></i><span>skill + evidence files</span></div>
+            <img src="assets/img/console-session-skill.png" alt="Transcript start: the agent loads its triage skill and reads the attached CSV and diagnostics log in parallel." loading="lazy">
+          </div>
+          <p class="shot-cap">The same session starts by loading its skill and the attached evidence files.</p>
+        </figure>
+        <figure style="margin:0">
+          <div class="browser">
+            <div class="browser-bar"><i></i><i></i><i></i><span>devproof.ai / agents</span></div>
+            <img src="assets/img/console-agents.png" alt="The agents list: versioned agents with routing, status and a wiki-writer badge." loading="lazy">
+          </div>
+          <p class="shot-cap">Agents are versioned configs: routing, tools, skills, environment, subagents.</p>
+        </figure>
+        <figure style="margin:0">
+          <div class="browser">
+            <div class="browser-bar"><i></i><i></i><i></i><span>devproof.ai / wikis</span></div>
+            <img src="assets/img/console-wiki.png" alt="An LLM wiki: a folder tree of markdown pages maintained by a single writer agent." loading="lazy">
+          </div>
+          <p class="shot-cap">An LLM wiki the agents maintain themselves — one writer, many readers.</p>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── MODEL HOSTING ── -->
+  <section id="hosting">
+    <div class="wrap">
+      <p class="eyebrow"><span class="eyebrow-line">Use case 02 — Model hosting</span></p>
+      <h2 class="sec-head">Deploy any open model<br>in one click</h2>
+      <p class="lead">A curated catalog shows <b>hardware requirements and estimated cost</b> for
+        every model before you run it. One click provisions a pool and routes an
+        endpoint — or bring your own weights from Hugging Face, an internal registry,
+        or a plain URL.</p>
+
+      <div class="shot-block">
+        <div class="browser">
+          <div class="browser-bar"><i></i><i></i><i></i><span>devproof.ai / catalog</span></div>
+          <img src="assets/img/console-catalog.png" alt="The model catalog: 162 open models with parameters, context window, GPU RAM and estimated throughput, each with a deploy button." loading="lazy">
+        </div>
+        <p class="shot-cap">162 curated open models — parameters, context, GPU RAM, throughput — plus your own.</p>
+      </div>
+
+      <div class="feat">
+        <div class="f"><h4>Elastic by default</h4>
+          <p>Deployments autoscale on live queue depth and sleep to zero replicas when
+            idle — requests during wake-up are held, not dropped.</p></div>
+        <div class="f"><h4>One gateway, two dialects</h4>
+          <p>Every deployment speaks the OpenAI <em>and</em> Anthropic APIs. Your existing
+            tools switch by changing one line — the base URL.</p></div>
+        <div class="f"><h4>Routings</h4>
+          <p>Rule tables that resolve each request to a model — by context length, spend,
+            token budgets, time of day, or a classifier — and can reject over-budget
+            traffic with a clean error.</p></div>
+        <div class="f"><h4>Local and remote together</h4>
+          <p>External endpoints (OpenAI, Anthropic, OpenRouter, custom) sit behind the
+            same gateway, keys stored server-side — mix self-hosted and cloud per rule.</p></div>
+        <div class="f"><h4>Metered like a product</h4>
+          <p>Per-key, per-agent, per-workspace usage and cost tracking, with real
+            (infra) and billed (customer) ledgers kept separate.</p></div>
+        <div class="f"><h4>No lock-in</h4>
+          <p>Open weights, standard Kubernetes, and APIs your tools already speak —
+            moving in (or out) is a base-URL change, not a rewrite.</p></div>
+      </div>
+
+      <div class="shot-pair">
+        <figure style="margin:0">
+          <div class="browser">
+            <div class="browser-bar"><i></i><i></i><i></i><span>devproof.ai / deployments</span></div>
+            <img src="assets/img/console-deployments.png" alt="Deployments list: a local model and an external endpoint served side by side through the gateway." loading="lazy">
+          </div>
+          <p class="shot-cap">Local pods and external endpoints, served side by side.</p>
+        </figure>
+        <figure style="margin:0">
+          <div class="browser">
+            <div class="browser-bar"><i></i><i></i><i></i><span>devproof.ai / routings</span></div>
+            <img src="assets/img/console-routings.png" alt="Routings: named rule tables that resolve client requests to deployments." loading="lazy">
+          </div>
+          <p class="shot-cap">Clients call a routing like a model; rules decide where it lands.</p>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── DROP-IN ── -->
+  <section id="compat">
+    <div class="wrap">
+      <p class="eyebrow"><span class="eyebrow-line">Drop-in compatible</span></p>
+      <h2 class="sec-head">Point your stack at your own models</h2>
+      <p class="lead">No rewrite, no new SDK, no vendor account — change the base URL.</p>
+      <div class="cards3">
+        <div class="card"><div class="k">Coding agents</div><h3>Claude Code &amp; Codex</h3>
+          <p>Run your dev agents against models on your own cluster — same CLI, your endpoint.</p></div>
+        <div class="card"><div class="k">Existing apps</div><h3>OpenAI API</h3>
+          <p>Anything built on the OpenAI SDK just works — flip the base URL and go.</p></div>
+        <div class="card"><div class="k">Frameworks</div><h3>LangChain &amp; co.</h3>
+          <p>LangChain, LlamaIndex, the Vercel AI SDK — unchanged, now pointed inward.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── PYTHON CLIENT ── -->
+  <section id="python">
+    <div class="wrap">
+      <p class="eyebrow"><span class="eyebrow-line">Or from code</span></p>
+      <h2 class="sec-head">Script everything</h2>
+      <p class="lead">Anything the console can do, the REST API and the typed Python client
+        can do too — create agents from CI, kick off sessions from a webhook or a cron
+        job, and wire the results into your own product. A dozen lines end to end.</p>
+      <div class="term" style="margin-top:40px">
+        <div class="term-bar"><i></i><i></i><i></i><span>python — devproof client</span></div>
+        <div class="term-body code-body">
+<span class="ln"><span class="p">$</span> pip install devproofai-client</span>
+<span class="ln">&nbsp;</span>
+<span class="ln"><span class="kw">from</span> devproof <span class="kw">import</span> Devproof</span>
+<span class="ln">&nbsp;</span>
+<span class="ln">client = Devproof()  <span class="c"># DEVPROOF_BASE_URL + DEVPROOF_API_KEY</span></span>
+<span class="ln">&nbsp;</span>
+<span class="ln">agent = client.agents.create(</span>
+<span class="ln">    name=<span class="c">"support-triage"</span>, routing=<span class="c">"support"</span>,</span>
+<span class="ln">    environment_id=env[<span class="c">"id"</span>], tools=[<span class="c">"Bash"</span>, <span class="c">"Read"</span>, <span class="c">"Write"</span>],</span>
+<span class="ln">    system_prompt=<span class="c">"You triage the M40 support inbox."</span>,</span>
+<span class="ln">)</span>
+<span class="ln">session = client.sessions.create(agent=agent[<span class="c">"id"</span>],</span>
+<span class="ln">    prompt=<span class="c">"Triage this week's inbox export."</span>)</span>
+<span class="ln">&nbsp;</span>
+<span class="ln"><span class="kw">for</span> event <span class="kw">in</span> client.sessions.events.stream(session[<span class="c">"id"</span>]):</span>
+<span class="ln">    print(event[<span class="c">"type"</span>], event.get(<span class="c">"payload"</span>))</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── WHY OWN IT (deliberately quiet) ── -->
+  <section id="why" class="quiet" style="margin-top:84px">
+    <div class="wrap inner">
+      <p class="eyebrow"><span class="eyebrow-line">Why own it</span></p>
+      <p>AI stopped being a feature and became foundation — and open-weight models
+        (GLM, Llama, Qwen, DeepSeek) now rival the closed frontier under permissive
+        licenses. Owning the serving layer means your
+        <span class="risks"><b>access</b> · <b>cost</b> · <b>uptime</b> · <b>scale</b></span>
+        are decided by you, not by someone else's pricing page. That's the whole
+        argument; the rest of this page is the how.</p>
+    </div>
+  </section>
+
+  <!-- ── COMPONENTS ── -->
+  <section id="components">
+    <div class="wrap">
+      <p class="eyebrow"><span class="eyebrow-line">How it works</span></p>
+      <h2 class="sec-head">A Kubernetes-native control plane</h2>
+      <p class="lead">Six components, one chart. Runs anywhere Kubernetes does — the same
+        manifests from a docker-desktop laptop to a thousand-node cluster.</p>
+
+      <div class="pipe" role="list">
+        <div class="step" role="listitem"><div class="k">Catalog</div><h4>Pick a model</h4><p>Curated + custom, with hardware and cost up front.</p></div>
+        <div class="step" role="listitem"><div class="k">Operator</div><h4>Provision</h4><p>CRDs become serving pods, autoscaled on live load.</p></div>
+        <div class="step" role="listitem"><div class="k">Gateway</div><h4>Serve</h4><p>OpenAI + Anthropic APIs, auth, metering — one endpoint.</p></div>
+        <div class="step" role="listitem"><div class="k">Agents</div><h4>Run</h4><p>Sessions as Jobs: idle to zero, checkpoint, resume.</p></div>
+      </div>
+
+      <div class="shot-block">
+        <div class="browser">
+          <div class="browser-bar"><i></i><i></i><i></i><span>devproof.ai / dashboard</span></div>
+          <img src="assets/img/console-dashboard.png" alt="The console dashboard: models serving, agent sessions, token throughput and cost for a workspace, with live usage charts." loading="lazy">
+        </div>
+        <p class="shot-cap">The console — your whole AI platform in one pane of glass, scoped per workspace.</p>
+      </div>
+
+      <div class="comp">
+        <div class="c"><div class="k">console/</div><h4>Console</h4>
+          <p>The web UI above: dashboards, live session transcripts, catalog, deployments,
+            usage and billing — everything scoped per workspace.</p></div>
+        <div class="c"><div class="k">control-plane/</div><h4>Control plane</h4>
+          <p>The platform API and session orchestrator. Workspaces, agents, sessions,
+            files, wikis, keys — Postgres-backed, event-driven.</p></div>
+        <div class="c"><div class="k">operator/</div><h4>Operator</h4>
+          <p>A Go operator that turns <code>ModelPool</code> and <code>ModelDeployment</code>
+            resources into serving pods, and scales them on live queue depth.</p></div>
+        <div class="c"><div class="k">gateway</div><h4>Gateway</h4>
+          <p>One endpoint for every model, local or external: API-key auth, usage
+            metering, routing rules, and wake-on-request for sleeping models.</p></div>
+        <div class="c"><div class="k">session-runner/</div><h4>Session runner</h4>
+          <p>The per-session pod: an in-house agent loop with built-in tools (bash,
+            files, web, MCP), checkpoints, and delegation — no vendor CLI inside.</p></div>
+        <div class="c"><div class="k">catalog/</div><h4>Model catalog</h4>
+          <p>A curated YAML catalog of open models with hardware profiles and context
+            windows; add custom entries from any source.</p></div>
+      </div>
+
+      <div class="shot-pair">
+        <figure style="margin:0">
+          <div class="browser">
+            <div class="browser-bar"><i></i><i></i><i></i><span>devproof.ai / environments</span></div>
+            <img src="assets/img/console-environments.png" alt="Environments: sandbox profiles with egress allowlists and pod resources." loading="lazy">
+          </div>
+          <p class="shot-cap">Environments define the sandbox: egress allowlist, resources, persistent disk.</p>
+        </figure>
+        <figure style="margin:0">
+          <div class="browser">
+            <div class="browser-bar"><i></i><i></i><i></i><span>devproof.ai / sessions</span></div>
+            <img src="assets/img/console-sessions.png" alt="The sessions list with token usage and billed cost per session, including a delegated child session." loading="lazy">
+          </div>
+          <p class="shot-cap">Every session with tokens and cost — including delegated child sessions.</p>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── OPEN SOURCE ── -->
+  <section id="source">
+    <div class="wrap">
+      <p class="eyebrow"><span class="eyebrow-line">Source</span></p>
+      <h2 class="sec-head">Get the code</h2>
+      <p class="lead">Everything is in one repository — operator, control plane, console,
+        session runner, charts. Install it from there, audit what runs next to your
+        data, patch it yourself. Source-available under the <b>Elastic License 2.0</b>
+        (self-host freely, including commercially); the Python client is <b>Apache-2.0</b>.</p>
+      <div class="btnrow">
+        <a class="btn dark" href="https://github.com/devproof/devproofai">github.com/devproof/devproofai ↗</a>
+        <a class="btn ghost" href="docs/index.html">Get started in the docs</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <a class="lockup" href="#top">
+      <svg aria-hidden="true"><use href="#mark"/></svg>
+      <span>
+        <span class="lk-word">DEVPROOF<span class="ai">.AI</span></span>
+        <span class="lk-tag">Own your scalable AI</span>
+      </span>
+    </a>
+    <nav aria-label="Footer">
+      <a href="#agents">Managed agents</a>
+      <a href="#hosting">Model hosting</a>
+      <a href="docs/index.html">Docs</a>
+      <a href="https://github.com/devproof/devproofai">GitHub</a>
+      <a href="contact.html">Contact</a>
+      <a href="imprint.html">Imprint</a>
+      <a href="privacy.html">Privacy</a>
+    </nav>
+    <div class="fine">© 2026 devproof.ai — own your scalable AI ∎</div>
+  </div>
+</footer>
+
+<div class="lightbox" id="lightbox" role="dialog" aria-label="Screenshot preview"><img alt=""></div>
+<script>
+  const lb = document.getElementById('lightbox'), lbImg = lb.querySelector('img');
+  document.querySelectorAll('.browser img').forEach((img) => {
+    img.title = 'Click to expand';
+    img.addEventListener('click', () => {
+      lbImg.src = img.currentSrc || img.src; lbImg.alt = img.alt;
+      lb.classList.add('open');
+    });
+  });
+  lb.addEventListener('click', () => lb.classList.remove('open'));
+  addEventListener('keydown', (e) => { if (e.key === 'Escape') lb.classList.remove('open'); });
+</script>
+<script src="assets/consent.js"></script>
+</body>
+</html>

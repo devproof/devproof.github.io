@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Getting started — DEVPROOF.AI docs</title>
+<meta name="description" content="Install Devproof AI on any Kubernetes cluster, deploy your first model, and run your first managed agent.">
+<link rel="stylesheet" href="../assets/fonts.css">
+<link rel="stylesheet" href="../assets/site.css">
+<link rel="icon" type="image/svg+xml" href="../assets/mark.svg">
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="mark" viewBox="0 0 100 100">
+      <polygon points="30,9 70,9 91,50 70,91 30,91 9,50" fill="#fff" stroke="#1E5BC6" stroke-width="3" stroke-linejoin="round"/>
+      <polygon points="38,25 62,25 75,50 62,75 38,75 25,50" fill="none" stroke="#1E5BC6" stroke-width="1.3" stroke-linejoin="round" opacity=".3"/>
+      <path d="M35,51 L46,63 L67,37" fill="none" stroke="#E8641B" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="64.5" y="33.5" width="6.5" height="6.5" rx="1.2" fill="#E8641B"/>
+      <rect x="43" y="71.5" width="14" height="2.6" rx="1.3" fill="#1E5BC6"/>
+    </symbol>
+  </defs>
+</svg>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="lockup" href="../index.html">
+      <svg aria-hidden="true"><use href="#mark"/></svg>
+      <span>
+        <span class="lk-word">DEVPROOF<span class="ai">.AI</span></span>
+        <span class="lk-tag">Own your scalable AI</span>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="../index.html#agents">Managed agents</a>
+      <a href="../index.html#hosting">Model hosting</a>
+      <a href="../index.html#components">Components</a>
+      <a href="index.html">Docs</a>
+      <a class="gh" href="https://github.com/devproof/devproofai">GitHub ↗</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap docs-grid">
+  <aside class="docs-side" aria-label="Docs navigation">
+    <div class="k">Docs</div>
+    <a href="index.html" class="on">Getting started</a>
+    <a href="concepts.html">Concepts</a>
+    <a href="api.html">API &amp; integrations</a>
+    <div class="k">Elsewhere</div>
+    <a href="https://github.com/devproof/devproofai">Source on GitHub</a>
+  </aside>
+
+  <main class="docs-body">
+    <p class="eyebrow"><span class="eyebrow-line">Docs</span></p>
+    <h1>Getting started</h1>
+    <p class="lead">From an empty Kubernetes cluster to a served model and a running
+      agent. Works on docker-desktop; scales to production clusters with the same chart.</p>
+
+    <h2 id="prereqs">Prerequisites</h2>
+    <ul>
+      <li>A Kubernetes cluster — docker-desktop's built-in cluster is enough for a first run.</li>
+      <li><code>kubectl</code> and <code>helm</code> (v3) on your PATH.</li>
+      <li>For GPU models: nodes with GPUs. CPU-only clusters can serve the smaller catalog models.</li>
+    </ul>
+
+    <h2 id="install">1 — Install the platform</h2>
+    <p>One umbrella chart (published as an OCI package) deploys everything: control plane,
+      console, gateway, operator, and bundled Postgres + MinIO — both toggleable, see
+      <a href="#install-options">install options</a>.</p>
+    <pre><code>helm install devproof oci://ghcr.io/devproof/devproofai-helm \
+  -n devproof --create-namespace</code></pre>
+    <p>This installs the latest published chart. To pin a specific release, add
+      <code>--version vX.Y.Z</code>.</p>
+    <p>When the pods are up, expose the console and the model gateway — port-forward in
+      dev, or your ingress / LoadBalancer in production:</p>
+    <pre><code>kubectl -n devproof get pods
+kubectl -n devproof port-forward svc/console 7090:7090 &amp;
+kubectl -n devproof port-forward svc/gateway 14000:4000 &amp;
+<span class="c"># console → http://localhost:7090   gateway → http://localhost:14000</span></code></pre>
+    <div class="note">If image pulls from <code>ghcr.io/devproof/*</code> need auth in your
+      setup, pass <code>--set registryAuth.token=&lt;PAT with read:packages&gt;</code>.</div>
+
+    <h2 id="first-model">2 — Deploy your first model</h2>
+    <ol>
+      <li>Open <b>Serving → Model catalog</b>. Every entry lists parameters, context window,
+        format, and the hardware it needs — including CPU-only options.</li>
+      <li>Pick a model and press <b>Deploy</b>. The operator provisions a pool, downloads the
+        weights, and the gateway routes the endpoint when it's warm.</li>
+      <li>Watch it under <b>Serving → Deployments</b> until the phase is <b>Ready</b>.</li>
+    </ol>
+    <div class="note">Deployments with <code>min replicas = 0</code> sleep when idle and wake on the
+      first request — the request is held during wake-up, not dropped.</div>
+
+    <h2 id="routing">3 — Create a routing</h2>
+    <p>Clients never call a deployment directly — they call a <b>routing</b>, a named rule
+      table that resolves each request to a model (and can enforce budgets). The simplest
+      routing has no rules and one terminal:</p>
+    <ol>
+      <li>Open <b>Serving → Routings → Create routing</b>.</li>
+      <li>Name it (say <code>main</code>) and set the terminal to route to your deployment.</li>
+    </ol>
+    <p>The rule editor makes routings more than a pointer — this table keeps small
+      prompts on the local model while the workspace is under its monthly token budget,
+      sends everything else to the external endpoint, and rejects once the budget is
+      gone:</p>
+    <figure style="margin:24px 0 0">
+      <div class="browser">
+        <div class="browser-bar"><i></i><i></i><i></i><span>devproof.ai / routings / main — rules</span></div>
+        <img src="../assets/img/console-routing-rules.png" alt="The routing rule editor: two rules with context and token-budget conditions, each routing to a model, and a reject terminal." loading="lazy">
+      </div>
+      <p class="shot-cap">Rules are evaluated top-down; edits apply live — no restart, no gateway reload.</p>
+    </figure>
+    <div class="note">Condition types: <code>context</code>, <code>cost</code>,
+      <code>tokens</code>, <code>available</code>, <code>time</code>, <code>split</code>,
+      <code>classify</code>. See <a href="concepts.html#serving">Concepts → Routings</a>.</div>
+
+    <h2 id="api-key">4 — Call it</h2>
+    <p>Create a key under <b>API keys</b>, then use either dialect — the gateway speaks both:</p>
+    <pre><code><span class="c"># OpenAI-compatible</span>
+curl http://&lt;gateway&gt;/v1/chat/completions \
+  -H "Authorization: Bearer dpk_..." \
+  -d '{"model": "main", "messages": [{"role":"user","content":"hello"}]}'
+
+<span class="c"># Anthropic-compatible</span>
+curl http://&lt;gateway&gt;/v1/messages \
+  -H "Authorization: Bearer dpk_..." \
+  -d '{"model": "main", "max_tokens": 256,
+       "messages": [{"role":"user","content":"hello"}]}'</code></pre>
+    <p>The official SDKs work unchanged — only the base URL moves:</p>
+    <pre><code><span class="c"># OpenAI SDK (Python)</span>
+from openai import OpenAI
+client = OpenAI(base_url="http://&lt;gateway&gt;/v1", api_key="dpk_...")
+r = client.chat.completions.create(
+    model="main",
+    messages=[{"role": "user", "content": "Summarize this incident report…"}],
+)
+print(r.choices[0].message.content)</code></pre>
+    <pre><code><span class="c"># Anthropic SDK (Python)</span>
+from anthropic import Anthropic
+client = Anthropic(base_url="http://&lt;gateway&gt;", auth_token="dpk_...")
+msg = client.messages.create(
+    model="main", max_tokens=1024,
+    messages=[{"role": "user", "content": "Summarize this incident report…"}],
+)
+print(msg.content[0].text)</code></pre>
+    <p>Or point a coding agent at it:</p>
+    <pre><code>export ANTHROPIC_BASE_URL=http://&lt;gateway&gt;
+export ANTHROPIC_AUTH_TOKEN=dpk_...
+claude --model main</code></pre>
+
+    <h2 id="first-agent">5 — Run your first managed agent</h2>
+    <ol>
+      <li><b>Managed agents → Environments → Create.</b> An environment is the sandbox
+        profile: which hosts (if any) the agent may reach, pod resources, and whether
+        <code>/work</code> persists across turns. Start with no allowed hosts.</li>
+      <li><b>Managed agents → Agents → Create.</b> Give it a name, the routing from step 3,
+        a system prompt, tools (Bash, Read, Write, …), and the environment. Optionally add
+        skills, memory, wikis and MCP servers here — see <a href="concepts.html">Concepts</a>.</li>
+      <li><b>Sessions → Create session.</b> Pick the agent, write the first prompt, attach
+        input files if you have them, and start.</li>
+      <li>Open the session to watch the live transcript — every message, thought and tool
+        call as it happens. Sessions go <b>idle</b> between turns; send a follow-up any time.</li>
+    </ol>
+    <figure style="margin:24px 0 0">
+      <div class="browser">
+        <div class="browser-bar"><i></i><i></i><i></i><span>devproof.ai / sessions — live transcript</span></div>
+        <img src="../assets/img/console-session-skill.png" alt="A session transcript streaming live: the agent loads its skill and reads the attached files, with every thought and tool call as a row." loading="lazy">
+      </div>
+      <p class="shot-cap">The live transcript: the agent loads its skill, reads the attached files, and works.</p>
+    </figure>
+    <div class="note">Each turn runs as a Kubernetes Job in its own pod: nothing is running
+      (and nothing costs anything) between messages. Failed sessions are resumable from the
+      last completed turn.</div>
+    <p style="margin-top:22px">Files attached to sessions and everything the agent publishes
+      from its outputs directory are browsable — and downloadable — under <b>Files</b>,
+      linked to the sessions that used them:</p>
+    <figure style="margin:24px 0 0">
+      <div class="browser">
+        <div class="browser-bar"><i></i><i></i><i></i><span>devproof.ai / files</span></div>
+        <img src="../assets/img/console-files.png" alt="The files list: input uploads and per-session output files with sizes and session links." loading="lazy">
+      </div>
+      <p class="shot-cap">Inputs and agent-produced outputs, linked to their sessions.</p>
+    </figure>
+
+    <h2 id="install-options">Install options</h2>
+
+    <h3 id="agents-only">Agents only — no local model hosting</h3>
+    <p>Don't want to serve models on the cluster? Install without the LLMkube serving
+      engine. Agents, routings, API keys and metering then run purely against
+      <b>external endpoints</b> (OpenAI, Anthropic, OpenRouter, custom) which you add in
+      the console under <b>Deployments → Add endpoint</b>:</p>
+    <pre><code>helm install devproof oci://ghcr.io/devproof/devproofai-helm \
+  -n devproof --create-namespace \
+  --set llmkube.enabled=false</code></pre>
+
+    <h3 id="external-db">Bring your own Postgres</h3>
+    <p>Disable the bundled Postgres and point the platform at your own database:</p>
+    <pre><code><span class="c"># values-prod.yaml</span>
+postgres:
+  enabled: false
+externalDatabase:
+  host: pg.internal.example.com
+  port: 5432
+  database: devproof
+  user: devproof
+  existingSecret: devproof-db     <span class="c"># key: password (create before install)</span>
+  sslMode: require</code></pre>
+
+    <h3 id="external-s3">Bring your own S3</h3>
+    <p>Disable the bundled MinIO and use real S3 (or any S3-compatible store). With
+      <code>auth.mode: podIdentity</code> the control plane uses the pod's AWS identity —
+      set the IRSA role via the service-account annotation instead of static keys:</p>
+    <pre><code><span class="c"># values-prod.yaml</span>
+minio:
+  enabled: false
+s3:
+  endpoint: ""                    <span class="c"># "" = real AWS S3; or your compatible endpoint</span>
+  bucket: devproof-files
+  region: eu-central-1
+  auth:
+    mode: podIdentity             <span class="c"># or: key + existingSecret</span>
+controlplane:
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/devproof-s3</code></pre>
+    <p>With static keys instead: <code>auth.mode: key</code> plus an
+      <code>existingSecret</code> holding <code>access-key-id</code> /
+      <code>secret-access-key</code>.</p>
+
+    <h3 id="exposure">Exposure &amp; upgrades</h3>
+    <ul>
+      <li>Console, gateway and control plane each accept
+        <code>&lt;component&gt;.service.{type,annotations,nodePort}</code> for LoadBalancer /
+        NodePort exposure; every component takes
+        <code>resources</code>/<code>nodeSelector</code>/<code>tolerations</code>.</li>
+      <li><code>helm upgrade</code> needs <code>--force-conflicts</code>: the control plane
+        co-owns the gateway ConfigMap at runtime, so the field-ownership conflict is
+        expected — the chart re-emits the runtime value verbatim.</li>
+    </ul>
+
+    <h2 id="next">Where to go next</h2>
+    <ul>
+      <li><a href="concepts.html">Concepts</a> — workspaces, environments, skills, memory,
+        LLM wikis, delegation, routings, cost tracking.</li>
+      <li><a href="api.html">API &amp; integrations</a> — the platform API, both gateway
+        dialects, and the Python client.</li>
+    </ul>
+  </main>
+</div>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <a class="lockup" href="../index.html">
+      <svg aria-hidden="true"><use href="#mark"/></svg>
+      <span>
+        <span class="lk-word">DEVPROOF<span class="ai">.AI</span></span>
+        <span class="lk-tag">Own your scalable AI</span>
+      </span>
+    </a>
+    <nav aria-label="Footer">
+      <a href="../index.html#agents">Managed agents</a>
+      <a href="../index.html#hosting">Model hosting</a>
+      <a href="index.html">Docs</a>
+      <a href="https://github.com/devproof/devproofai">GitHub</a>
+      <a href="../contact.html">Contact</a>
+      <a href="../imprint.html">Imprint</a>
+      <a href="../privacy.html">Privacy</a>
+    </nav>
+    <div class="fine">© 2026 devproof.ai — own your scalable AI ∎</div>
+  </div>
+</footer>
+
+<div class="lightbox" id="lightbox" role="dialog" aria-label="Screenshot preview"><img alt=""></div>
+<script>
+  const lb = document.getElementById('lightbox'), lbImg = lb.querySelector('img');
+  document.querySelectorAll('.browser img').forEach((img) => {
+    img.title = 'Click to expand';
+    img.addEventListener('click', () => {
+      lbImg.src = img.currentSrc || img.src; lbImg.alt = img.alt;
+      lb.classList.add('open');
+    });
+  });
+  lb.addEventListener('click', () => lb.classList.remove('open'));
+  addEventListener('keydown', (e) => { if (e.key === 'Escape') lb.classList.remove('open'); });
+</script>
+<script src="../assets/consent.js"></script>
+</body>
+</html>

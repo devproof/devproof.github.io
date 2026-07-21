@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Contact — DEVPROOF.AI</title>
+<meta name="description" content="Get in touch about devproof.ai — self-hosted LLM serving and managed agents on Kubernetes.">
+<link rel="stylesheet" href="assets/fonts.css">
+<link rel="stylesheet" href="assets/site.css">
+<link rel="icon" type="image/svg+xml" href="assets/mark.svg">
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="mark" viewBox="0 0 100 100">
+      <polygon points="30,9 70,9 91,50 70,91 30,91 9,50" fill="#fff" stroke="#1E5BC6" stroke-width="3" stroke-linejoin="round"/>
+      <polygon points="38,25 62,25 75,50 62,75 38,75 25,50" fill="none" stroke="#1E5BC6" stroke-width="1.3" stroke-linejoin="round" opacity=".3"/>
+      <path d="M35,51 L46,63 L67,37" fill="none" stroke="#E8641B" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="64.5" y="33.5" width="6.5" height="6.5" rx="1.2" fill="#E8641B"/>
+      <rect x="43" y="71.5" width="14" height="2.6" rx="1.3" fill="#1E5BC6"/>
+    </symbol>
+  </defs>
+</svg>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="lockup" href="index.html">
+      <svg aria-hidden="true"><use href="#mark"/></svg>
+      <span>
+        <span class="lk-word">DEVPROOF<span class="ai">.AI</span></span>
+        <span class="lk-tag">Own your scalable AI</span>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="index.html#agents">Managed agents</a>
+      <a href="index.html#hosting">Model hosting</a>
+      <a href="index.html#components">Components</a>
+      <a href="docs/index.html">Docs</a>
+      <a class="gh" href="https://github.com/devproof/devproofai">GitHub ↗</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap docs-grid" style="grid-template-columns:1fr">
+  <main class="docs-body">
+    <p class="eyebrow"><span class="eyebrow-line">Contact</span></p>
+    <h1>Get in touch</h1>
+    <p class="lead">Questions about running the platform, feedback on the docs, or an
+      idea worth building? Send a message — or open an issue on
+      <a href="https://github.com/devproof/devproofai">GitHub</a> if it's about the code.</p>
+
+    <form id="contact-form" class="form" action="https://api.web3forms.com/submit" method="POST">
+      <!-- Web3Forms public access key (public by design — it only routes mail) -->
+      <input type="hidden" name="access_key" value="e595ff31-0f90-451f-984e-e33c01cc6a3a">
+      <input type="hidden" name="subject" value="devproof.ai — contact form">
+      <input type="hidden" name="from_name" value="devproof.ai website">
+      <!-- honeypot: hidden from people, tempting to bots -->
+      <input type="checkbox" name="botcheck" tabindex="-1" autocomplete="off" style="display:none">
+
+      <div class="field">
+        <label for="name">Name</label>
+        <input id="name" name="name" type="text" required autocomplete="name" placeholder="Your name">
+      </div>
+
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" required autocomplete="email" placeholder="you@example.com">
+        <span class="hint">So we can reply to you.</span>
+      </div>
+
+      <div class="field">
+        <label for="message">Message</label>
+        <textarea id="message" name="message" rows="7" required placeholder="What's on your mind?"></textarea>
+      </div>
+
+      <div class="field check">
+        <input id="consent" type="checkbox" required>
+        <label for="consent">I agree that my details will be transmitted to answer my
+          enquiry. See the <a href="privacy.html">privacy policy</a>; you can withdraw
+          this consent at any time.</label>
+      </div>
+
+      <div class="btnrow" style="margin-top:22px">
+        <button type="submit" class="btn" id="submit-btn">Send message</button>
+      </div>
+      <p class="form-status" id="form-status" role="status" aria-live="polite"></p>
+    </form>
+
+    <h2>Other ways</h2>
+    <ul>
+      <li><b>Bugs and feature requests</b> — open an issue in the
+        <a href="https://github.com/devproof/devproofai">repository</a>.</li>
+      <li><b>Postal address</b> — see the <a href="imprint.html">imprint</a>.</li>
+    </ul>
+  </main>
+</div>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <a class="lockup" href="index.html">
+      <svg aria-hidden="true"><use href="#mark"/></svg>
+      <span>
+        <span class="lk-word">DEVPROOF<span class="ai">.AI</span></span>
+        <span class="lk-tag">Own your scalable AI</span>
+      </span>
+    </a>
+    <nav aria-label="Footer">
+      <a href="index.html#agents">Managed agents</a>
+      <a href="index.html#hosting">Model hosting</a>
+      <a href="docs/index.html">Docs</a>
+      <a href="https://github.com/devproof/devproofai">GitHub</a>
+      <a href="contact.html">Contact</a>
+      <a href="imprint.html">Imprint</a>
+      <a href="privacy.html">Privacy</a>
+    </nav>
+    <div class="fine">© 2026 devproof.ai — own your scalable AI ∎</div>
+  </div>
+</footer>
+
+<script>
+  // Submit via fetch so nothing leaves the page until the visitor actively sends,
+  // and the confirmation stays on this site (no redirect to a third party).
+  const form = document.getElementById('contact-form');
+  const status = document.getElementById('form-status');
+  const btn = document.getElementById('submit-btn');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    btn.disabled = true;
+    status.className = 'form-status busy';
+    status.textContent = 'Sending…';
+    try {
+      const res = await fetch(form.action, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify(Object.fromEntries(new FormData(form))),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        form.reset();
+        status.className = 'form-status ok';
+        status.textContent = 'Message sent. Thanks — you will hear back at the address you gave.';
+      } else {
+        status.className = 'form-status err';
+        status.textContent = (data && data.message) ? data.message : 'The message could not be sent. Please try again later.';
+      }
+    } catch {
+      status.className = 'form-status err';
+      status.textContent = 'The message could not be sent — check your connection and try again.';
+    } finally {
+      btn.disabled = false;
+    }
+  });
+</script>
+
+<script src="assets/consent.js"></script>
+</body>
+</html>

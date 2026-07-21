@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Concepts — DEVPROOF.AI docs</title>
+<meta name="description" content="The Devproof AI platform model: workspaces, serving, routings, agents, sessions, environments, skills, memory, LLM wikis, delegation, and cost tracking.">
+<link rel="stylesheet" href="../assets/fonts.css">
+<link rel="stylesheet" href="../assets/site.css">
+<link rel="icon" type="image/svg+xml" href="../assets/mark.svg">
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="mark" viewBox="0 0 100 100">
+      <polygon points="30,9 70,9 91,50 70,91 30,91 9,50" fill="#fff" stroke="#1E5BC6" stroke-width="3" stroke-linejoin="round"/>
+      <polygon points="38,25 62,25 75,50 62,75 38,75 25,50" fill="none" stroke="#1E5BC6" stroke-width="1.3" stroke-linejoin="round" opacity=".3"/>
+      <path d="M35,51 L46,63 L67,37" fill="none" stroke="#E8641B" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="64.5" y="33.5" width="6.5" height="6.5" rx="1.2" fill="#E8641B"/>
+      <rect x="43" y="71.5" width="14" height="2.6" rx="1.3" fill="#1E5BC6"/>
+    </symbol>
+  </defs>
+</svg>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="lockup" href="../index.html">
+      <svg aria-hidden="true"><use href="#mark"/></svg>
+      <span>
+        <span class="lk-word">DEVPROOF<span class="ai">.AI</span></span>
+        <span class="lk-tag">Own your scalable AI</span>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="../index.html#agents">Managed agents</a>
+      <a href="../index.html#hosting">Model hosting</a>
+      <a href="../index.html#components">Components</a>
+      <a href="index.html">Docs</a>
+      <a class="gh" href="https://github.com/devproof/devproofai">GitHub ↗</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap docs-grid">
+  <aside class="docs-side" aria-label="Docs navigation">
+    <div class="k">Docs</div>
+    <a href="index.html">Getting started</a>
+    <a href="concepts.html" class="on">Concepts</a>
+    <a href="api.html">API &amp; integrations</a>
+    <div class="k">Elsewhere</div>
+    <a href="https://github.com/devproof/devproofai">Source on GitHub</a>
+  </aside>
+
+  <main class="docs-body">
+    <p class="eyebrow"><span class="eyebrow-line">Docs</span></p>
+    <h1>Concepts</h1>
+    <p class="lead">The platform in one page: what each object is and how they fit together.</p>
+
+    <h2 id="workspaces">Workspaces</h2>
+    <p>Everything on the agents side — agents, sessions, files, skills, memory, wikis,
+      vaults, API keys — lives inside a <b>workspace</b>, the multi-tenancy boundary.
+      Serving (catalog, pools, deployments, routings) is global: models are shared
+      infrastructure; workspaces consume them and are metered separately.</p>
+
+    <h2 id="serving">The serving plane</h2>
+    <h3>Catalog</h3>
+    <p>A curated list of open models with parameters, context window, quantization format,
+      and per-replica hardware requirements. Custom entries can point at any weight source.</p>
+    <h3>Pools &amp; deployments</h3>
+    <p>A <b>pool</b> describes where model pods may run: node selectors, tolerations, and
+      a replica budget the platform enforces across all of the pool's deployments. A
+      <b>deployment</b> serves one catalog model in a pool, with per-replica CPU/memory
+      taken from the catalog entry (overridable at deploy time) and, for
+      reasoning-capable models, a chosen thinking budget.</p>
+    <p>Deployments are elastic in both directions:</p>
+    <ul>
+      <li><b>Scale up</b> — the operator watches live engine metrics (queue depth, in-flight
+        requests) and adds replicas between min and max, clamped to the pool budget.</li>
+      <li><b>Scale to zero</b> — a min-0 deployment sleeps after a configurable idle period.
+        It stays routed at the gateway, so the first request is <em>held</em> while the
+        model wakes and released when it's servable — callers see latency, never an error.</li>
+    </ul>
+    <figure style="margin:24px 0 0">
+      <div class="browser">
+        <div class="browser-bar"><i></i><i></i><i></i><span>devproof.ai / deployments</span></div>
+        <img src="../assets/img/console-deployments.png" alt="Deployments: a local model (idle at zero replicas) and an external endpoint, both served through the gateway." loading="lazy">
+      </div>
+      <p class="shot-cap">A local model sleeping at zero replicas and an external endpoint — one gateway serves both.</p>
+    </figure>
+    <h3>Routings</h3>
+    <p>Clients call a <b>routing</b>, not a model. A routing is an ordered rule table:
+      each rule has conditions (context size, spend or token budgets per key / workspace /
+      agent, time windows, traffic splits, or a model-based classifier) and a target;
+      the terminal either routes or rejects. Rule edits apply live. External API keys can
+      <em>only</em> call routings — which is what makes budget enforcement inescapable.</p>
+    <p>A table that keeps small prompts on the local model while the workspace is under
+      its monthly token budget, sends everything else to the external endpoint, and
+      rejects once the budget is gone:</p>
+    <figure style="margin:24px 0 0">
+      <div class="browser">
+        <div class="browser-bar"><i></i><i></i><i></i><span>devproof.ai / routings / main — rules</span></div>
+        <img src="../assets/img/console-routing-rules.png" alt="The routing rule editor: context and token-budget conditions per rule, a target model per rule, and a reject terminal." loading="lazy">
+      </div>
+      <p class="shot-cap">Conditions within a rule are ANDed; rules evaluate top-down, first match wins.</p>
+    </figure>
+    <p>Once the budget condition stops matching, nothing routes and the terminal rejects
+      with a clean error. The same table is plain JSON on the API for scripting.</p>
+
+    <h3 id="condition-types">The seven condition types</h3>
+    <p>Rules combine conditions freely (ANDed within a rule, up to ten per rule, up to
+      fifty rules per routing):</p>
+
+    <p><b>context</b> — matches on the estimated size of the incoming prompt. The
+      classic use: keep everyday prompts on a small local model and burst oversized
+      documents to a big-context endpoint.</p>
+    <pre><code>{ "type": "context", "op": "&gt;", "tokens": 120000 }</code></pre>
+
+    <p><b>cost</b> — matches on accumulated spend from the cost ledgers, scoped to the
+      calling <code>key</code>, <code>workspace</code>, <code>agent</code>, this
+      <code>routing</code>, or the <code>target</code> model; over a calendar
+      <code>month</code>, <code>day</code>, or a <code>rolling</code> window of hours.
+      <code>ledger</code> picks which money is counted: <code>billed</code> (what you
+      charge consumers) or <code>real</code> (what the infrastructure costs you). This is
+      how you build free tiers and per-customer budgets that enforce themselves:</p>
+    <pre><code>{ "type": "cost", "ledger": "billed", "scope": "key",
+  "op": "&lt;", "threshold": 50, "window": { "kind": "day" } }</code></pre>
+
+    <p><b>tokens</b> — like <code>cost</code>, but counts tokens instead of money.
+      Tokens are always metered, independent of any billing configuration, so this
+      works even with cost tracking switched off. A monthly workspace cap:</p>
+    <pre><code>{ "type": "tokens", "scope": "workspace",
+  "op": "&lt;", "threshold": 500000000, "window": { "kind": "month" } }</code></pre>
+
+    <p><b>available</b> — matches only while the rule's target is currently routable.
+      Put a local model first and an external endpoint below it, and you have automatic
+      failover — traffic returns home when the local model is back:</p>
+    <pre><code>{ "conditions": [ { "type": "available" } ], "target": "qwen-local" },
+{ "conditions": [], "target": "claude-remote" }</code></pre>
+
+    <p><b>time</b> — matches inside a time window (days, HH:MM range, an IANA
+      timezone). Serve office hours on the fast model, nights and weekends on the
+      cheap one:</p>
+    <pre><code>{ "type": "time", "days": ["mon","tue","wed","thu","fri"],
+  "from": "08:00", "to": "18:00", "tz": "Europe/Berlin" }</code></pre>
+
+    <p><b>split</b> — matches a percentage of traffic. The canary: send 10% of
+      requests to a new model and watch its stats before committing:</p>
+    <pre><code>{ "type": "split", "percent": 10 }</code></pre>
+
+    <p><b>classify</b> — the model-as-router: a (typically small, local) deployment
+      labels each request, and the rule matches when the label is in <code>match</code>.
+      Route coding traffic to a code model without your clients changing anything:</p>
+    <pre><code>{ "type": "classify", "deployment": "qwen-mini",
+  "labels": { "code": "programming, debugging, software",
+              "chat": "everything else" },
+  "match": ["code"] }</code></pre>
+
+    <p>Every decision is visible per request in the routing's <a href="#tracing">live
+      trace</a> — which rule matched, the evaluated values, and the resolved target.</p>
+    <h3>External endpoints</h3>
+    <p>OpenAI, Anthropic, OpenRouter or custom endpoints registered behind the same
+      gateway, with provider keys stored server-side. Routing rules can mix local and
+      external targets — e.g. local by default, cloud for oversized contexts.</p>
+    <h3>Gateway</h3>
+    <p>One endpoint for everything: API-key auth, per-call usage metering, routing
+      resolution, and wake-on-request. It speaks both the OpenAI and Anthropic wire
+      formats regardless of what serves the model underneath.</p>
+
+    <h2 id="agents">The agents plane</h2>
+    <h3>Agents &amp; versions</h3>
+    <p>An <b>agent</b> is a named, versioned configuration: routing, system prompt, tools,
+      environment, skills, memory access, wiki access, subagents, MCP servers. Editing an
+      agent creates a new version; running sessions keep the version they started with.</p>
+    <h3>Sessions</h3>
+    <p>A <b>session</b> is one job given to an agent. Each turn runs as a Kubernetes Job in
+      an isolated pod; between turns the session is <b>idle</b> and costs nothing. Every
+      prompt, thought, tool call and result is an event in the transcript — streamed live
+      to the console. Sessions checkpoint their state and are resumable, including after
+      failures.</p>
+    <figure style="margin:24px 0 0">
+      <div class="browser">
+        <div class="browser-bar"><i></i><i></i><i></i><span>devproof.ai / sessions</span></div>
+        <img src="../assets/img/console-sessions.png" alt="The sessions list: per-session token usage and billed cost, including a delegated child session linked to its parent." loading="lazy">
+      </div>
+      <p class="shot-cap">Sessions with tokens and billed cost — including a delegated child linked to its parent.</p>
+    </figure>
+    <h3>Files</h3>
+    <p>Sessions consume and produce <b>files</b>: uploads are attached at session start or
+      on any follow-up turn and appear inside the pod; whatever the agent writes to its
+      outputs directory is collected at turn end. Files are immutable, workspace-scoped,
+      stored in S3-compatible object storage, and linked to every session that used them.</p>
+    <h3>Environments</h3>
+    <p>The sandbox profile a session pod runs with: an egress allowlist enforced by a
+      per-environment proxy and network policy (no internet by default), pod resources,
+      and the <code>/work</code> disk — ephemeral by default, or a durable per-session
+      volume. Package-manager access (PyPI, npm) is a separate, explicit toggle.</p>
+    <figure style="margin:24px 0 0">
+      <div class="browser">
+        <div class="browser-bar"><i></i><i></i><i></i><span>devproof.ai / environments</span></div>
+        <img src="../assets/img/console-environments.png" alt="Environments: an all-blocked egress profile with pod resource requests." loading="lazy">
+      </div>
+      <p class="shot-cap">This environment blocks all egress and caps pod resources — sessions inherit it.</p>
+    </figure>
+    <h3>Skills</h3>
+    <p>Versioned packages of instructions and files an agent can load on demand —
+      progressive disclosure keeps prompts small: the agent sees an index and pulls only
+      the files it needs. A skill is a <code>SKILL.md</code> plus any bundled reference
+      files, uploaded as markdown or a zip; agents list their skills and load them with
+      a built-in tool at run time.</p>
+    <figure style="margin:24px 0 0">
+      <div class="browser">
+        <div class="browser-bar"><i></i><i></i><i></i><span>devproof.ai / skills</span></div>
+        <img src="../assets/img/console-skills.png" alt="The skills list: versioned skill packages shared per workspace." loading="lazy">
+      </div>
+      <p class="shot-cap">Skills are versioned and shared per workspace — update once, every agent follows.</p>
+    </figure>
+    <h3>MCP servers</h3>
+    <p>Agents can use any Model Context Protocol server as extra tools. Server URLs are
+      part of the agent config; auth tokens are referenced from a credential vault and
+      expanded inside the pod — never written into job specs or prompts. When an
+      environment allows it, the egress allowlist opens automatically for the configured
+      servers' hosts, and a bundled registry makes common servers one click.</p>
+    <h3>Memory stores</h3>
+    <p>Per-agent long-term memory: a small file tree the agent reads at session start and
+      updates as it learns. Changes sync back diff-based at turn end.</p>
+    <h3>LLM wikis</h3>
+    <p>Shared knowledge bases mounted into session pods at <code>/mnt/wiki/&lt;name&gt;</code>.
+      Any number of agents may <b>read</b> a wiki; exactly <b>one</b> agent is its
+      <b>writer</b> and runs single-session, so writes never race. Readers report
+      corrections by delegating to the writer — the platform serializes its queue. The
+      structure is enforced by convention: an <code>index.md</code> catalog, one page per
+      topic with frontmatter, and an append-only <code>log.md</code>.</p>
+    <figure style="margin:24px 0 0">
+      <div class="browser">
+        <div class="browser-bar"><i></i><i></i><i></i><span>devproof.ai / wikis / support-kb</span></div>
+        <img src="../assets/img/console-wiki.png" alt="A wiki page written by an agent: folder tree, frontmatter, rendered markdown." loading="lazy">
+      </div>
+      <p class="shot-cap">This page was researched, written and filed by the wiki's writer agent.</p>
+    </figure>
+    <h3>Delegation</h3>
+    <p>An agent may delegate work to configured subagents. A delegation is a full child
+      session, linked to the parent in the transcript; the parent can follow up on the
+      child across turns and finally mark it complete.</p>
+    <h3>Credential vaults</h3>
+    <p>Typed secrets (environment variables, bearer tokens, MCP OAuth) stored as
+      Kubernetes secrets and injected into session pods at launch — values never appear
+      in prompts, transcripts, or job specs.</p>
+
+    <h2 id="tracing">Tracing &amp; observability</h2>
+    <p>Nothing on the platform is a black box — there are three layers of visibility,
+      from a single wire request up to fleet-wide usage:</p>
+    <h3>The live gateway trace</h3>
+    <p>Every routing has a <b>Trace</b> tab: a live, capture-only view of the requests
+      flowing through it (nothing is stored — it captures while the tab is open). Each
+      request shows who called (API key or agent session), the <b>rule evaluation</b> —
+      which conditions were checked, their evaluated values, and the resolved target —
+      plus the exact wire messages and token counts of the response:</p>
+    <figure style="margin:24px 0 0">
+      <div class="browser">
+        <div class="browser-bar"><i></i><i></i><i></i><span>devproof.ai / routings / support — trace (live)</span></div>
+        <img src="../assets/img/console-routing-trace.webp" alt="Animated: the live trace fills as requests arrive; expanding an entry reveals the matched rule, the resolved target and the wire messages." loading="lazy">
+      </div>
+      <p class="shot-cap">Recorded live: requests arrive, and expanding one shows the matched rule, target and wire messages.</p>
+    </figure>
+    <h3>Per-routing and per-deployment stats</h3>
+    <p>Each routing's Overview charts requests by <b>target</b> and by <b>rule</b>
+      (including rejects), plus token and cost rates, filterable by API key and agent
+      over windows from one minute to 48 hours — so you can watch a canary rule take
+      traffic in real time:</p>
+    <figure style="margin:24px 0 0">
+      <div class="browser">
+        <div class="browser-bar"><i></i><i></i><i></i><span>devproof.ai / routings / support — overview</span></div>
+        <img src="../assets/img/console-routing-overview.png" alt="Routing overview: request, token and cost rates with requests-by-target and requests-by-rule charts." loading="lazy">
+      </div>
+      <p class="shot-cap">Live stats per routing: requests by target, by rule, tokens and cost.</p>
+    </figure>
+    <h3>Session transcripts</h3>
+    <p>On the agents side, the session transcript is the trace: every prompt, thought,
+      tool call, delegation and result, streamed live, with a Debug view of the raw
+      events underneath.</p>
+
+    <h2 id="costs">Usage &amp; cost tracking</h2>
+    <p>Every gateway call is metered at the moment it happens — token counts land per
+      <b>workspace</b>, <b>API key</b>, <b>agent</b>, <b>session</b>, <b>routing</b> and
+      <b>deployment</b>, and session token totals tick live mid-turn.</p>
+    <p>Two ledgers are kept strictly apart:</p>
+    <ul>
+      <li><b>Real cost</b> — what the platform costs <em>you</em>: external-provider
+        tokens at their prices, plus time-based infrastructure costs (model pods,
+        session pods, environments) accrued per started minute while replicas run.</li>
+      <li><b>Billed cost</b> — what you charge <em>your consumers</em>, at prices you set:
+        per token per model, per pod-hour, per session-minute. Idle-to-zero sessions
+        mean a session bills only for minutes in which it actually ran.</li>
+    </ul>
+    <p>Prices are stamped at usage time, so history never changes retroactively when you
+      edit a price. Routing rules can enforce budgets against either ledger (or plain
+      token counts) — see <a href="#condition-types">cost and tokens conditions</a> —
+      which turns the metering from reporting into an enforceable contract.</p>
+    <figure style="margin:24px 0 0">
+      <div class="browser">
+        <div class="browser-bar"><i></i><i></i><i></i><span>devproof.ai / usage — sessions</span></div>
+        <img src="../assets/img/console-usage-sessions.png" alt="Usage for managed-agent sessions: token and cost charts per day for the workspace." loading="lazy">
+      </div>
+      <p class="shot-cap">Managed-agent usage per workspace; API-key traffic has its own view.</p>
+    </figure>
+    <figure style="margin:24px 0 0">
+      <div class="browser">
+        <div class="browser-bar"><i></i><i></i><i></i><span>devproof.ai / usage — api</span></div>
+        <img src="../assets/img/console-usage.png" alt="Usage for external API traffic: tokens, requests, real and billed cost per day, filterable by key and deployment." loading="lazy">
+      </div>
+      <p class="shot-cap">External API traffic, metered per key and deployment — real vs billed, kept apart.</p>
+    </figure>
+
+    <h2 id="scale">The scale posture</h2>
+    <p>Everything is built to scale to hundreds or thousands of pods — models autoscale
+      on live load, agent turns are independent Jobs, and the same chart runs on a laptop
+      and a production cluster. The building blocks are standard: open weights, standard
+      Kubernetes, OpenAI/Anthropic-compatible APIs — no rewrite to move in or out.</p>
+  </main>
+</div>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <a class="lockup" href="../index.html">
+      <svg aria-hidden="true"><use href="#mark"/></svg>
+      <span>
+        <span class="lk-word">DEVPROOF<span class="ai">.AI</span></span>
+        <span class="lk-tag">Own your scalable AI</span>
+      </span>
+    </a>
+    <nav aria-label="Footer">
+      <a href="../index.html#agents">Managed agents</a>
+      <a href="../index.html#hosting">Model hosting</a>
+      <a href="index.html">Docs</a>
+      <a href="https://github.com/devproof/devproofai">GitHub</a>
+      <a href="../contact.html">Contact</a>
+      <a href="../imprint.html">Imprint</a>
+      <a href="../privacy.html">Privacy</a>
+    </nav>
+    <div class="fine">© 2026 devproof.ai — own your scalable AI ∎</div>
+  </div>
+</footer>
+
+<div class="lightbox" id="lightbox" role="dialog" aria-label="Screenshot preview"><img alt=""></div>
+<script>
+  const lb = document.getElementById('lightbox'), lbImg = lb.querySelector('img');
+  document.querySelectorAll('.browser img').forEach((img) => {
+    img.title = 'Click to expand';
+    img.addEventListener('click', () => {
+      lbImg.src = img.currentSrc || img.src; lbImg.alt = img.alt;
+      lb.classList.add('open');
+    });
+  });
+  lb.addEventListener('click', () => lb.classList.remove('open'));
+  addEventListener('keydown', (e) => { if (e.key === 'Escape') lb.classList.remove('open'); });
+</script>
+<script src="../assets/consent.js"></script>
+</body>
+</html>
