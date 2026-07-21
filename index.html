@@ -184,6 +184,55 @@
           <p class="shot-cap">An LLM wiki the agents maintain themselves — one writer, many readers.</p>
         </figure>
       </div>
+
+      <div class="shot-pair">
+        <figure style="margin:0">
+          <div class="browser">
+            <div class="browser-bar"><i></i><i></i><i></i><span>devproof.ai / environments</span></div>
+            <img src="assets/img/console-environments.png" alt="Environments: sandbox profiles with egress allowlists and pod resources." loading="lazy">
+          </div>
+          <p class="shot-cap">Environments define the sandbox: egress allowlist, resources, persistent disk.</p>
+        </figure>
+        <figure style="margin:0">
+          <div class="browser">
+            <div class="browser-bar"><i></i><i></i><i></i><span>devproof.ai / sessions</span></div>
+            <img src="assets/img/console-sessions.png" alt="The sessions list with token usage and billed cost per session, including a delegated child session." loading="lazy">
+          </div>
+          <p class="shot-cap">Every session with tokens and cost — including delegated child sessions.</p>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── PYTHON CLIENT ── -->
+  <section id="python">
+    <div class="wrap">
+      <p class="eyebrow"><span class="eyebrow-line">Or from code</span></p>
+      <h2 class="sec-head">Script everything</h2>
+      <p class="lead">Anything the console can do, the REST API and the typed Python client
+        can do too — create agents from CI, kick off sessions from a webhook or a cron
+        job, and wire the results into your own product. A dozen lines end to end.</p>
+      <div class="term" style="margin-top:40px">
+        <div class="term-bar"><i></i><i></i><i></i><span>python — devproof client</span></div>
+        <div class="term-body code-body">
+<span class="ln"><span class="p">$</span> pip install devproofai-client</span>
+<span class="ln">&nbsp;</span>
+<span class="ln"><span class="kw">from</span> devproof <span class="kw">import</span> Devproof</span>
+<span class="ln">&nbsp;</span>
+<span class="ln">client = Devproof()  <span class="c"># DEVPROOF_BASE_URL + DEVPROOF_API_KEY</span></span>
+<span class="ln">&nbsp;</span>
+<span class="ln">agent = client.agents.create(</span>
+<span class="ln">    name=<span class="c">"support-triage"</span>, routing=<span class="c">"support"</span>,</span>
+<span class="ln">    environment_id=env[<span class="c">"id"</span>], tools=[<span class="c">"Bash"</span>, <span class="c">"Read"</span>, <span class="c">"Write"</span>],</span>
+<span class="ln">    system_prompt=<span class="c">"You triage the M40 support inbox."</span>,</span>
+<span class="ln">)</span>
+<span class="ln">session = client.sessions.create(agent=agent[<span class="c">"id"</span>],</span>
+<span class="ln">    prompt=<span class="c">"Triage this week's inbox export."</span>)</span>
+<span class="ln">&nbsp;</span>
+<span class="ln"><span class="kw">for</span> event <span class="kw">in</span> client.sessions.events.stream(session[<span class="c">"id"</span>]):</span>
+<span class="ln">    print(event[<span class="c">"type"</span>], event.get(<span class="c">"payload"</span>))</span>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -263,38 +312,6 @@
     </div>
   </section>
 
-  <!-- ── PYTHON CLIENT ── -->
-  <section id="python">
-    <div class="wrap">
-      <p class="eyebrow"><span class="eyebrow-line">Or from code</span></p>
-      <h2 class="sec-head">Script everything</h2>
-      <p class="lead">Anything the console can do, the REST API and the typed Python client
-        can do too — create agents from CI, kick off sessions from a webhook or a cron
-        job, and wire the results into your own product. A dozen lines end to end.</p>
-      <div class="term" style="margin-top:40px">
-        <div class="term-bar"><i></i><i></i><i></i><span>python — devproof client</span></div>
-        <div class="term-body code-body">
-<span class="ln"><span class="p">$</span> pip install devproofai-client</span>
-<span class="ln">&nbsp;</span>
-<span class="ln"><span class="kw">from</span> devproof <span class="kw">import</span> Devproof</span>
-<span class="ln">&nbsp;</span>
-<span class="ln">client = Devproof()  <span class="c"># DEVPROOF_BASE_URL + DEVPROOF_API_KEY</span></span>
-<span class="ln">&nbsp;</span>
-<span class="ln">agent = client.agents.create(</span>
-<span class="ln">    name=<span class="c">"support-triage"</span>, routing=<span class="c">"support"</span>,</span>
-<span class="ln">    environment_id=env[<span class="c">"id"</span>], tools=[<span class="c">"Bash"</span>, <span class="c">"Read"</span>, <span class="c">"Write"</span>],</span>
-<span class="ln">    system_prompt=<span class="c">"You triage the M40 support inbox."</span>,</span>
-<span class="ln">)</span>
-<span class="ln">session = client.sessions.create(agent=agent[<span class="c">"id"</span>],</span>
-<span class="ln">    prompt=<span class="c">"Triage this week's inbox export."</span>)</span>
-<span class="ln">&nbsp;</span>
-<span class="ln"><span class="kw">for</span> event <span class="kw">in</span> client.sessions.events.stream(session[<span class="c">"id"</span>]):</span>
-<span class="ln">    print(event[<span class="c">"type"</span>], event.get(<span class="c">"payload"</span>))</span>
-        </div>
-      </div>
-    </div>
-  </section>
-
   <!-- ── WHY OWN IT (deliberately quiet) ── -->
   <section id="why" class="quiet" style="margin-top:84px">
     <div class="wrap inner">
@@ -350,23 +367,6 @@
         <div class="c"><div class="k">catalog/</div><h4>Model catalog</h4>
           <p>A curated YAML catalog of open models with hardware profiles and context
             windows; add custom entries from any source.</p></div>
-      </div>
-
-      <div class="shot-pair">
-        <figure style="margin:0">
-          <div class="browser">
-            <div class="browser-bar"><i></i><i></i><i></i><span>devproof.ai / environments</span></div>
-            <img src="assets/img/console-environments.png" alt="Environments: sandbox profiles with egress allowlists and pod resources." loading="lazy">
-          </div>
-          <p class="shot-cap">Environments define the sandbox: egress allowlist, resources, persistent disk.</p>
-        </figure>
-        <figure style="margin:0">
-          <div class="browser">
-            <div class="browser-bar"><i></i><i></i><i></i><span>devproof.ai / sessions</span></div>
-            <img src="assets/img/console-sessions.png" alt="The sessions list with token usage and billed cost per session, including a delegated child session." loading="lazy">
-          </div>
-          <p class="shot-cap">Every session with tokens and cost — including delegated child sessions.</p>
-        </figure>
       </div>
     </div>
   </section>
