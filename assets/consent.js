@@ -6,7 +6,7 @@
  *
  * When GA_ID is set: gtag.js is loaded ONLY after an explicit opt-in. Rejecting
  * is exactly as easy as accepting, and the choice can be changed later via the
- * "Cookie settings" link in the footer.
+ * "Change cookie settings" button on the privacy page (linked from every footer).
  */
 (function () {
   'use strict';

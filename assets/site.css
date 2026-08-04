@@ -1,4 +1,4 @@
-/* devproof.ai — blueprint identity. Tokens from private/brand + the pitch deck. */
+/* devproof.ai — blueprint identity. */
 :root{
   --paper:#EAEEF3; --ink:#0F2038; --blue:#1E5BC6; --cyan:#57E6FF; --orange:#E8641B;
   --muted:#5C6B7D; --line:#D3DBE6; --panel:#FFFFFF;
@@ -173,7 +173,7 @@ a.card:hover{border-color:var(--blue)}
 .comp .c p{color:var(--muted);font-size:15px;margin-top:8px}
 .comp .c p code{font-family:var(--mono);font-size:12.5px;background:var(--paper);padding:1px 5px;border-radius:4px}
 
-/* dark investor band */
+/* dark band */
 .band{background:var(--navy);color:#E8EEF6;border-radius:18px;padding:56px 56px 60px;margin-top:84px;
   background-image:linear-gradient(rgba(87,160,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(87,160,255,.05) 1px,transparent 1px);
   background-size:28px 28px}
@@ -272,4 +272,31 @@ a.card:hover{border-color:var(--blue)}
   .band{padding:36px 24px 40px}
   .site-head .wrap{height:auto;padding:12px 24px;flex-wrap:wrap}
   .site-nav{gap:14px}
+  /* The wrapped nav makes the header ~240px tall — sticky at that height covers
+     the heading of every section an anchor link jumps to, and a third of the
+     viewport while scrolling. Let it scroll away on phones. */
+  .site-head{position:static}
 }
+
+/* ── Video tiles (index teaser) ── */
+.tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-top:40px}
+.tiles .tile{display:block;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--panel);text-decoration:none}
+.tiles .tile img{display:block;width:100%;height:auto}
+.tiles .tile span{display:block;padding:8px 10px;font-family:var(--mono);font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink)}
+.tiles .tile:hover{border-color:var(--blue)}
+@media (max-width:980px){.tiles{grid-template-columns:repeat(2,1fr)}.tiles .tile:nth-child(5){grid-column:1/-1;max-width:calc(50% - 7px);justify-self:center;width:100%}}
+
+/* ── Video facades (videos page) ── */
+.video-grid{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:40px}
+.video-grid figure{margin:0}
+.video-grid figure:nth-child(5){grid-column:1/-1;max-width:60%;justify-self:center;width:100%}
+.video-wrap{position:relative;aspect-ratio:16/9;background:#000}
+.video-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.facade{position:relative;display:block;width:100%;height:100%;padding:0;border:0;background:none;cursor:pointer}
+.facade img{display:block;width:100%;height:100%;object-fit:cover}
+.facade .play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.facade .play i{width:74px;height:52px;border-radius:12px;background:rgba(15,32,56,.82);display:flex;align-items:center;justify-content:center;transition:background .15s}
+.facade .play i::after{content:"";border-style:solid;border-width:11px 0 11px 19px;border-color:transparent transparent transparent #fff;margin-left:4px}
+.facade:hover .play i,.facade:focus-visible .play i{background:var(--orange)}
+.vid-note{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:8px}
+@media (max-width:980px){.video-grid{grid-template-columns:1fr}.video-grid figure:nth-child(5){max-width:none}}
