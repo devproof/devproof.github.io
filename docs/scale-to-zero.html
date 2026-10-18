@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scale-to-zero for self-hosted LLMs — DEVPROOF.AI docs</title>
+<meta name="description" content="How Devproof sleeps idle model deployments to zero replicas and still answers the first request afterwards: the gateway holds the connection while the model wakes. Plus the four invariants that broke it in production.">
+<link rel="canonical" href="https://devproof.ai/docs/scale-to-zero.html">
+<link rel="stylesheet" href="../assets/fonts.css">
+<link rel="stylesheet" href="../assets/site.css">
+<link rel="icon" type="image/svg+xml" href="../assets/mark.svg">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="DEVPROOF.AI">
+<meta property="og:title" content="Scale-to-zero for self-hosted LLMs — DEVPROOF.AI docs">
+<meta property="og:description" content="How Devproof sleeps idle model deployments to zero replicas and still answers the first request afterwards: the gateway holds the connection while the model wakes. Plus the four invariants that broke it in production.">
+<meta property="og:url" content="https://devproof.ai/docs/scale-to-zero.html">
+<meta property="og:image" content="https://devproof.ai/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="DEVPROOF.AI — open-source managed AI agents on Kubernetes">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Scale-to-zero for self-hosted LLMs — DEVPROOF.AI docs">
+<meta name="twitter:description" content="How Devproof sleeps idle model deployments to zero replicas and still answers the first request afterwards: the gateway holds the connection while the model wakes. Plus the four invariants that broke it in production.">
+<meta name="twitter:image" content="https://devproof.ai/assets/og.png">
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="mark" viewBox="0 0 100 100">
+      <polygon points="30,9 70,9 91,50 70,91 30,91 9,50" fill="#fff" stroke="#1E5BC6" stroke-width="3" stroke-linejoin="round"/>
+      <polygon points="38,25 62,25 75,50 62,75 38,75 25,50" fill="none" stroke="#1E5BC6" stroke-width="1.3" stroke-linejoin="round" opacity=".3"/>
+      <path d="M35,51 L46,63 L67,37" fill="none" stroke="#E8641B" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="64.5" y="33.5" width="6.5" height="6.5" rx="1.2" fill="#E8641B"/>
+      <rect x="43" y="71.5" width="14" height="2.6" rx="1.3" fill="#1E5BC6"/>
+    </symbol>
+  </defs>
+</svg>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="lockup" href="../">
+      <svg aria-hidden="true"><use href="#mark"/></svg>
+      <span>
+        <span class="lk-word">DEVPROOF<span class="ai">.AI</span></span>
+        <span class="lk-tag">Own your scalable AI</span>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="../#agents">Managed agents</a>
+      <a href="../#trace">Traceability</a>
+      <a href="../#hosting">Model hosting</a>
+      <a href="../compare.html">Compare</a>
+      <a href="../videos.html">Videos</a>
+      <a href="./">Docs</a>
+      <a class="gh" href="https://github.com/devproof/devproofai">GitHub ↗</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap docs-grid">
+  <aside class="docs-side" aria-label="Docs navigation">
+    <div class="k">Docs</div>
+    <a href="./">Getting started</a>
+    <a href="concepts.html">Concepts</a>
+    <a href="api.html">API &amp; integrations</a>
+    <a href="scale-to-zero.html" class="on">Scale-to-zero</a>
+    <div class="k">Elsewhere</div>
+    <a href="https://github.com/devproof/devproofai">Source on GitHub</a>
+  </aside>
+
+  <main class="docs-body">
+    <p class="eyebrow"><span class="eyebrow-line">Deep dive</span></p>
+    <h1>Scale-to-zero for self-hosted LLMs</h1>
+    <p class="lead">Sleeping an idle model deployment is easy. Answering the first request
+      after it wakes, without dropping it, is where the design actually lives. This page
+      documents how Devproof does it — and the four invariants that each broke it in a
+      running cluster before they were invariants.</p>
+
+    <h2 id="problem">The expensive idle</h2>
+    <p>A served open-weight model is a pod holding its weights in memory. It costs the same
+      whether it is answering a thousand requests a minute or none. For a shared cluster
+      running a catalog of models — a big one for hard turns, a small one for classification,
+      a reasoning model somebody tried once in March — most of them are idle most of the
+      time, and the idle ones are indistinguishable from the busy ones on your bill.</p>
+    <p>The obvious response is to scale idle deployments to zero replicas. The part that is
+      not obvious is what happens to the next request. Weights have to come back off disk,
+      the engine has to start, and the pod has to become Ready. On our dev cluster that takes
+      roughly <b>37 seconds</b> from a warm cache PVC. Somebody's request arrives during those
+      37 seconds. What you do with it determines whether scale-to-zero is a feature or an
+      outage generator.</p>
+
+    <h2 id="naive">Why the obvious design fails</h2>
+    <p>The intuitive approach is to treat a sleeping model as an absent one: when it scales to
+      zero, drop it from the gateway's routing table, and add it back when it returns. This is
+      wrong in a specific and instructive way.</p>
+    <p>Removing a model from the gateway config means rewriting that config and reloading the
+      gateway. A reload is a rolling restart. Rolling restarts drop in-flight connections, and
+      for a period measured in minutes you have a mix of old and new replicas, some of which
+      no longer know the route. So the design that is supposed to make a sleeping model
+      <em>reachable again</em> is the same design that guarantees the request arriving during
+      the transition has nowhere to land.</p>
+    <p>It also inverts the problem. You want the request to be the thing that <em>causes</em>
+      the wake. If the route is gone, the request cannot reach anything that knows how to wake
+      it.</p>
+
+    <h2 id="design">Sleeping deployments stay routed</h2>
+    <p>The core decision is that sleep and wake <b>never touch gateway configuration</b>. A
+      deployment at zero replicas keeps its route, keeps its entry in the model list, and keeps
+      its ClusterIP Service. In the operator, the routed set is defined by phase:</p>
+<pre><code>routed := func(s v1alpha1.ModelDeploymentStatus) bool {
+    return s.Phase == "Ready" || s.Phase == "Idle"
+}</code></pre>
+    <p><code>Idle</code> is a healthy, routed, steady state — not a degraded one. That single
+      choice is what makes the rest possible: because no config changes, no reload happens, and
+      a connection held open across the sleep-to-wake transition survives it.</p>
+    <p>The deployment reaches <code>Idle</code> when the scaler has seen a full idle window.
+      The scaler ticks every 15 seconds and the default window is 15 minutes, so sleep is
+      sixty consecutive idle ticks. Scale-<em>down</em> between non-zero replica counts uses a
+      separate, shorter hysteresis — twelve ticks, three minutes — because shedding a replica is
+      cheap and shedding the last one is not.</p>
+
+    <h2 id="hold">The gateway holds the request</h2>
+    <p>With the route intact, the first request after sleep reaches the gateway normally. A
+      pre-call hook checks the model's routing state and, if it is asleep, does two things:
+      signals the control plane, then holds the connection open until the model can serve it.</p>
+<pre><code>if send_signal:
+    await pool.execute(
+        "INSERT INTO wake_requests (model) VALUES ($1) ON CONFLICT (model) DO NOTHING", model)
+    await pool.execute("SELECT pg_notify('devproof_wake', $1)", model)
+
+deadline = time.monotonic() + WAKE_HOLD_MAX
+while time.monotonic() &lt; deadline:
+    await asyncio.sleep(WAKE_POLL)
+    state = await _routing_state(model)
+    if state == "ready":
+        return
+    if state is None:
+        break  # deployment deleted while waking
+
+raise HTTPException(status_code=503,
+                    detail=f"model {model} is waking from scale-to-zero - retry shortly",
+                    headers={"Retry-After": "60"})</code></pre>
+    <p>The signal is a Postgres row plus a <code>NOTIFY</code>, not an HTTP call. The row is the
+      durable part and the notification is the fast part: the control plane holds a
+      <code>LISTEN devproof_wake</code> connection, so the wake normally starts within
+      milliseconds, but if the control plane is restarting at that exact moment the request
+      survives in <code>wake_requests</code> and gets picked up by a sweep. Belt and braces, with
+      the braces costing one row.</p>
+    <p>The hold is a 2-second poll against a projection table, capped at 300 seconds. Past the
+      cap the caller gets a <code>503</code> with <code>Retry-After</code> rather than a hang.
+      One detail makes this viable at all: LiteLLM awaits pre-call hooks with a bare
+      <code>await</code> and no timeout wrapper, so the real bound on the hold is the client's
+      own timeout, not the gateway's.</p>
+
+    <h2 id="wake">Waking is an annotation, not a scale call</h2>
+    <p>The control plane does not scale the deployment directly. It patches one annotation:</p>
+<pre><code>await deps.kube.patch("modeldeployments", model, {
+  metadata: { annotations: { "serving.devproof.ai/target-replicas": "1" } },
+});
+await deps.repo.setModelRouting(model, "waking");
+await deps.repo.clearWakeRequest(model);</code></pre>
+    <p>There is exactly one writer of the InferenceService replica count — the
+      ModelDeployment reconciler — and it sources that number from this annotation. Everything
+      that wants to influence replicas, including the autoscaler, writes the annotation and lets
+      the reconciler apply it. Without that rule, a wake and a scaler tick race each other and
+      the loser silently wins half the time.</p>
+    <p>The operation is idempotent by design, because three independent triggers can fire for the
+      same wake: the gateway hook, the session launch gate (a session whose model is asleep parks
+      its payload and wakes the model), and the reconciler sweep.</p>
+
+    <h2 id="projection">A projection, plus a sweep that makes it true</h2>
+    <p>The <code>model_routing</code> table the gateway polls is not authoritative state. It is a
+      projection of two facts — the deployment's phase, and whether the control plane has warmed
+      it since it became routable:</p>
+<pre><code>export function routingStateFor(phase: string, warmed: boolean): RoutingState {
+  if (phase === "Ready" && warmed) return "ready";
+  if (phase === "Idle") return "idle";
+  return "waking";
+}</code></pre>
+    <p>Event hooks update the projection immediately, which is what makes holds release
+      promptly. A sweep on the reconciler's cadence recomputes the whole table from scratch,
+      which is what makes it correct after a control-plane crash, a lost notification, or a
+      wake that failed with no session parked behind it. The same sweep drains
+      <code>wake_requests</code> and re-fires any wake whose model is somehow still asleep.</p>
+    <p>Fast path and correct path are different mechanisms. The fast one is allowed to miss;
+      the slow one is not allowed to be wrong.</p>
+
+    <h2 id="invariants">Four invariants, each learned the hard way</h2>
+    <p>Everything above is the design as it exists after the following four things broke it in a
+      running cluster. They are listed because the failures are more informative than the design.</p>
+
+    <h3>1. Never infer a cache bounce from zero replicas</h3>
+    <p>When a deployment's placement changes, its model-cache PVC has to be deleted so the weights
+      re-provision on the target nodes. The reconciler drains to zero, waits for pods to vanish,
+      then deletes the PVC. The original implementation detected "pods are gone" by checking
+      <code>liveReplicas == 0</code>.</p>
+    <p>That check was unambiguous right up until <code>Idle</code> became a steady state. Then every
+      sleeping deployment started looking exactly like a drained one, and the reconciler deleted
+      the weights out from under models that were merely asleep. The fix is an explicit sentinel —
+      a <code>serving.devproof.ai/cache-bounce</code> annotation that is only ever set by the bounce
+      path:</p>
+<pre><code>func bounceAction(annotated, placementMoved bool, liveReplicas int64) string {
+    if placementMoved { return "drain" }
+    if annotated      { return "finish" }
+    _ = liveReplicas  // steady zero (Idle) is deliberately NOT a bounce state
+    return "none"
+}</code></pre>
+    <p>The discarded parameter is kept deliberately, with the comment attached, so the next person
+      to think "we could just check replicas here" finds the answer before the bug.</p>
+
+    <h3>2. Internal traffic must bypass the hold</h3>
+    <p>After a model becomes routable the control plane sends a small warmup completion through
+      the gateway, so the first real user request is not also the first prompt the engine has ever
+      seen. Warmup traffic uses the internal key.</p>
+    <p>If internal traffic is subject to the wake hold, the deadlock is immediate and total: the
+      warmup request is held waiting for the model to be <code>ready</code>, but the model only
+      becomes <code>ready</code> once it is warmed, and the thing that warms it is the request
+      currently being held. The system waits 300 seconds and then gives up, forever.</p>
+
+    <h3>3. Warmup bookkeeping must be Ready-phase-only</h3>
+    <p>The control plane tracks which models it has warmed in memory. After a restart that set is
+      empty, so every routed model briefly projects as <code>waking</code> rather than
+      <code>ready</code>. If the newly-routed detection that triggers warmup does not filter on
+      phase, a restart treats every sleeping deployment as newly routable and wakes the entire
+      catalog — which is both the most expensive possible outcome and the exact opposite of the
+      feature's purpose. Restarting the control plane and confirming the sleepers are still
+      <code>Idle</code> three minutes later is now a thing we check.</p>
+    <p>The same restart window produces a subtler hazard. With the warmed set empty, a normal
+      request to a <em>busy</em> deployment can briefly see <code>waking</code> and signal a wake.
+      If the wake handler patched <code>target-replicas: "1"</code> unconditionally, it would stomp
+      the autoscaler's current target — taking a deployment running four replicas under load down
+      to one. Hence the guard: read the custom resource and only wake if it genuinely says
+      <code>Idle</code>.</p>
+<pre><code>const d = await deps.kube.get("modeldeployments", model);
+if (d?.status?.phase !== "Idle") return;
+await wakeModel(deps, model);</code></pre>
+    <p>Correspondingly, the gateway only sends the notification for a model it observed as
+      <code>idle</code>. A model already <code>waking</code> just holds and polls.</p>
+
+    <h3>4. A phase the API server rejects is not a phase</h3>
+    <p>The least interesting bug and the most annoying one. <code>Idle</code> was added to the
+      controller before it was added to the CRD's <code>status.phase</code> enum. The API server
+      rejected every status update carrying it, which meant the phase never changed — deployments
+      scaled to zero while still reporting <code>Ready</code>, so the gateway cheerfully routed
+      traffic to zero pods and nothing ever woke. Validation failures on a status subresource are
+      easy to miss precisely because the reconcile loop keeps running and nothing crashes.</p>
+
+    <h2 id="numbers">The numbers</h2>
+<pre><code>scaler tick                15s
+idle window before sleep   15 min (default, per deployment)
+scale-down hysteresis      12 ticks = 3 min
+wake signal                Postgres row + NOTIFY
+gateway hold poll          2s
+gateway hold cap           300s  -> 503 + Retry-After: 60
+measured wake (warm PVC)   ~37s</code></pre>
+
+    <div class="note">The honest caveat: ~37 seconds is a measurement from a dev cluster with a
+      warm cache PVC and a small model. A large model on a cold cache is a weight download, and
+      that is minutes, not seconds — which is why the hold cap is 300 seconds and why the 503
+      carries a <code>Retry-After</code> rather than pretending the request can always be saved.</div>
+
+    <h2 id="takeaway">What generalises</h2>
+    <p>Very little of this is specific to language models. The shape — an expensive resource that
+      should sleep, a request that must survive the wake, and a router that must not forget the
+      sleeper exists — turns up wherever cold starts meet a proxy. Three things were worth the
+      bruises:</p>
+    <ul>
+      <li><b>Keep the route; change the state.</b> Routing changes are expensive and disruptive
+        exactly when you can least afford it. A sleeping thing should still be addressable.</li>
+      <li><b>Make the resting state explicit.</b> Most of these bugs are one piece of code
+        inferring "asleep" from a condition that something else also produces. Zero replicas meant
+        three different things; it needed to mean one.</li>
+      <li><b>Separate the fast path from the correct path.</b> Notifications make it snappy, the
+        sweep makes it true, and conflating them gets you a system that is usually right.</li>
+    </ul>
+    <p>The implementation is Apache-2.0 and lives in
+      <a href="https://github.com/devproof/devproofai">the repository</a> — the gateway hook in
+      <code>helm-charts/files/custom_callbacks.py</code>, the wake path in
+      <code>control-plane/src/wake.ts</code> and <code>routing-state.ts</code>, and the phase and
+      scaler logic under <code>operator/internal/</code>.</p>
+
+    <div class="btnrow" style="margin-top:26px">
+      <a class="btn" href="./">Get started</a>
+      <a class="btn ghost" href="https://github.com/devproof/devproofai" target="_blank" rel="noopener">View on GitHub ↗</a>
+    </div>
+  </main>
+</div>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <a class="lockup" href="../">
+      <svg aria-hidden="true"><use href="#mark"/></svg>
+      <span>
+        <span class="lk-word">DEVPROOF<span class="ai">.AI</span></span>
+        <span class="lk-tag">Own your scalable AI</span>
+      </span>
+    </a>
+    <nav aria-label="Footer">
+      <a href="../#agents">Managed agents</a>
+      <a href="../#hosting">Model hosting</a>
+      <a href="../compare.html">Compare</a>
+      <a href="../videos.html">Videos</a>
+      <a href="./">Docs</a>
+      <a href="https://github.com/devproof/devproofai">GitHub</a>
+      <a href="../contact.html">Contact</a>
+      <a href="../imprint.html">Imprint</a>
+      <a href="../privacy.html">Privacy</a>
+    </nav>
+    <div class="fine">© 2026 devproof.ai — own your scalable AI ∎</div>
+  </div>
+</footer>
+
+<script src="../assets/consent.js"></script>
+</body>
+</html>
