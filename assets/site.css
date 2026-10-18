@@ -302,3 +302,16 @@ a.card:hover{border-color:var(--blue)}
 /* subpage page-title: h1 semantics at section-heading scale (bare h1 is hero-sized) */
 h1.sec-head{font-size:clamp(30px,4.6vw,50px)}
 @media (max-width:980px){.video-grid{grid-template-columns:1fr}.video-grid figure:nth-child(5){max-width:none}}
+
+/* ── comparison page ── */
+.cmp-body{min-width:0;max-width:94ch}
+.cmp-scroll{overflow-x:auto;margin-top:18px;border:1px solid var(--line);border-radius:10px;background:#fff}
+.cmp-scroll table{border-collapse:collapse;width:100%;min-width:760px}
+.cmp-scroll th,.cmp-scroll td{border-bottom:1px solid var(--line);padding:10px 14px;text-align:left;font-size:14px;vertical-align:top}
+.cmp-scroll thead th{font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);background:#F3F6FA}
+.cmp-scroll thead th.us{color:var(--blue)}
+.cmp-scroll tbody th{font-family:var(--sans);font-size:14px;font-weight:600;color:var(--ink);background:#FAFCFE;white-space:nowrap}
+.cmp-scroll tbody tr:last-child th,.cmp-scroll tbody tr:last-child td{border-bottom:0}
+.cmp-y{color:var(--blue);font-weight:600}
+.cmp-n{color:var(--muted)}
+.cmp-asof{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:10px}

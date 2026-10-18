@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Self-hosted agent platforms compared — DEVPROOF.AI</title>
+<meta name="description" content="Devproof AI vs hosted managed-agent platforms: where sessions run, who operates them, model choice and data boundary — plus an honest note on when not to use Devproof.">
+<link rel="canonical" href="https://devproof.ai/compare.html">
+<link rel="stylesheet" href="assets/fonts.css">
+<link rel="stylesheet" href="assets/site.css">
+<link rel="icon" type="image/svg+xml" href="assets/mark.svg">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="DEVPROOF.AI">
+<meta property="og:title" content="Self-hosted agent platforms compared — DEVPROOF.AI">
+<meta property="og:description" content="Devproof AI vs hosted managed-agent platforms: where sessions run, who operates them, model choice and data boundary — plus an honest note on when not to use Devproof.">
+<meta property="og:url" content="https://devproof.ai/compare.html">
+<meta property="og:image" content="https://devproof.ai/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="DEVPROOF.AI — open-source managed AI agents on Kubernetes">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Self-hosted agent platforms compared — DEVPROOF.AI">
+<meta name="twitter:description" content="Devproof AI vs hosted managed-agent platforms: where sessions run, who operates them, model choice and data boundary — plus an honest note on when not to use Devproof.">
+<meta name="twitter:image" content="https://devproof.ai/assets/og.png">
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="mark" viewBox="0 0 100 100">
+      <polygon points="30,9 70,9 91,50 70,91 30,91 9,50" fill="#fff" stroke="#1E5BC6" stroke-width="3" stroke-linejoin="round"/>
+      <polygon points="38,25 62,25 75,50 62,75 38,75 25,50" fill="none" stroke="#1E5BC6" stroke-width="1.3" stroke-linejoin="round" opacity=".3"/>
+      <path d="M35,51 L46,63 L67,37" fill="none" stroke="#E8641B" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="64.5" y="33.5" width="6.5" height="6.5" rx="1.2" fill="#E8641B"/>
+      <rect x="43" y="71.5" width="14" height="2.6" rx="1.3" fill="#1E5BC6"/>
+    </symbol>
+  </defs>
+</svg>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="lockup" href="index.html">
+      <svg aria-hidden="true"><use href="#mark"/></svg>
+      <span>
+        <span class="lk-word">DEVPROOF<span class="ai">.AI</span></span>
+        <span class="lk-tag">Own your scalable AI</span>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="index.html#agents">Managed agents</a>
+      <a href="index.html#trace">Traceability</a>
+      <a href="index.html#hosting">Model hosting</a>
+      <a href="compare.html">Compare</a>
+      <a href="videos.html">Videos</a>
+      <a href="docs/index.html">Docs</a>
+      <a class="gh" href="https://github.com/devproof/devproofai">GitHub ↗</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section>
+    <div class="wrap">
+      <p class="eyebrow"><span class="eyebrow-line">Honest comparison</span></p>
+      <h1 class="sec-head">How Devproof compares</h1>
+      <p class="lead">Four quite different kinds of software get called an &ldquo;agent platform&rdquo;.
+        Picking the wrong category costs more than picking the wrong product in the right one —
+        so this page starts with the categories, then gets specific, then tells you when
+        <b>not</b> to use Devproof.</p>
+
+      <div class="docs-body cmp-body">
+
+        <h2>The four categories</h2>
+
+        <h3>1. Hosted managed-agent APIs</h3>
+        <p>Anthropic&rsquo;s managed agents, OpenAI&rsquo;s Agents API and similar. You call an
+          endpoint; the vendor runs the session, the sandbox and the model. Fastest possible start,
+          nothing to operate. In exchange your prompts, your tool output and your data traverse the
+          vendor&rsquo;s infrastructure, you use their models, and your agent behaviour is coupled
+          to a roadmap you do not control.</p>
+
+        <h3>2. Single-node self-hosted runtimes</h3>
+        <p>Open-source agent runtimes you start with Docker Compose or a single Node process.
+          These give you durable sessions, tools and memory on your own box, and they are genuinely
+          the quickest way to self-host one agent workload. Some can push sandboxes out to a remote
+          cluster, but the control plane itself is a process on one host rather than a cluster
+          workload &mdash; so the host is the ceiling.</p>
+
+        <h3>3. Sandbox primitives</h3>
+        <p>Dedicated code-execution sandboxes, and the micro-VM and kernel-isolation technologies
+          underneath them. These solve one hard problem extremely well: running untrusted generated
+          code with strong isolation. They are a <em>component</em>, not a platform &mdash; there is
+          no agent session model, no routing, no model serving. You build those yourself on
+          top.</p>
+
+        <h3>4. Kubernetes-native agent platforms</h3>
+        <p>Where Devproof sits. The session is a pod, the deployment is a custom resource, and an
+          operator reconciles them. You take on a real dependency &mdash; you need a cluster &mdash;
+          and in return scheduling, autoscaling, isolation, scale-to-zero and multi-node capacity
+          are the platform&rsquo;s job rather than yours.</p>
+
+        <div class="note">One distinction worth making, because search results blur it: several
+          tools combine &ldquo;AI agents&rdquo; and &ldquo;Kubernetes&rdquo; the other way round
+          &mdash; agents that <em>operate</em> your cluster, diagnosing a failing deployment or
+          writing manifests for you. That is a different category from infrastructure that
+          <em>runs</em> your agents. This page is about the second.</div>
+
+        <h2>Devproof vs a hosted platform</h2>
+        <p>This is the comparison that actually decides things, and the only one where the
+          differences are structural rather than a feature list that changes every month. Two rows
+          below go to the hosted platforms, because they genuinely win them.</p>
+
+        <div class="cmp-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">&nbsp;</th>
+                <th scope="col" class="us">Devproof AI</th>
+                <th scope="col">Hosted managed-agent platforms</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">Where sessions run</th>
+                <td class="cmp-y">Pods in your cluster</td>
+                <td>Vendor infrastructure</td>
+              </tr>
+              <tr>
+                <th scope="row">Who operates it</th>
+                <td>You</td>
+                <td>The vendor</td>
+              </tr>
+              <tr>
+                <th scope="row">Models</th>
+                <td class="cmp-y">Self-hosted open weights, or any external API</td>
+                <td>The vendor&rsquo;s models</td>
+              </tr>
+              <tr>
+                <th scope="row">Platform source</th>
+                <td class="cmp-y">Apache-2.0, complete</td>
+                <td>Proprietary service<sup>*</sup></td>
+              </tr>
+              <tr>
+                <th scope="row">Data boundary</th>
+                <td class="cmp-y">Infrastructure you control</td>
+                <td>Vendor&rsquo;s, governed by contract</td>
+              </tr>
+              <tr>
+                <th scope="row">Cost shape</th>
+                <td>Your compute</td>
+                <td>Per token + platform fees</td>
+              </tr>
+              <tr>
+                <th scope="row">Operational burden</th>
+                <td class="cmp-n">You run Kubernetes</td>
+                <td class="cmp-y">None</td>
+              </tr>
+              <tr>
+                <th scope="row">Time to first agent</th>
+                <td class="cmp-n">A cluster and a Helm install</td>
+                <td class="cmp-y">Minutes, with an API key</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="cmp-asof">* Client SDKs may be open source &mdash; OpenAI&rsquo;s Agents SDK is &mdash;
+          but the hosted platform behind them is not.</p>
+        <p class="cmp-asof">Every row above follows from where the software runs, not from a feature
+          list, which is why this table should stay true as both sides evolve.</p>
+
+
+        <h2>If you are coming from a hosted agent API</h2>
+        <p>The programming model is deliberately familiar: define an agent once, start sessions
+          against it, stream events, attach tools, skills and memory. What changes is where it runs
+          and what you can see. Sessions become pods in your cluster, every step is on the record in
+          a trace you own, and the model behind an agent becomes a routing rule you write &mdash;
+          local open weights for cheap turns, a frontier API for the hard ones, decided per request.</p>
+        <p>For EU teams this is often the deciding factor. To be fair about it: the hosted
+          vendors do have European answers &mdash; OpenAI offers EU data residency, and Claude can
+          be reached through AWS Bedrock or Google Vertex EU regions. What they cannot offer is
+          infrastructure you operate. Under the AI Act and GDPR the difference between
+          &ldquo;processed in the EU by a US provider&rdquo; and &ldquo;processed on our own
+          cluster&rdquo; is the difference between a data-processing agreement you negotiate and a
+          boundary you control outright.</p>
+
+        <h2>When Devproof is the wrong choice</h2>
+        <p>Three cases, stated plainly, because a comparison page that claims to win everything is
+          worth nothing:</p>
+        <ul>
+          <li><b>You do not have Kubernetes and do not want it.</b> Devproof&rsquo;s whole design
+            assumes a cluster. If you want one agent on one VM this weekend, a single-node runtime
+            will have you running in far less time, and that is the right call.</li>
+          <li><b>You only need a code sandbox.</b> If your requirement is &ldquo;execute untrusted
+            generated Python safely&rdquo; and nothing more, use a dedicated sandbox directly.
+            Devproof would be a platform wrapped around a feature you already have.</li>
+          <li><b>You need a large community today.</b> Devproof is new. The code is complete and
+            the architecture is deliberate, but you will not find Stack Overflow answers, a
+            consultancy ecosystem, or ten blog posts about your exact edge case. If that matters
+            more than control, pick something older.</li>
+        </ul>
+
+        <h2>Try it against your own workload</h2>
+        <p>The honest way to settle a comparison is to run it. Devproof installs on any Kubernetes
+          cluster, including a local <code>kind</code> or Docker Desktop one, in a single Helm
+          command.</p>
+        <div class="btnrow" style="margin-top:22px">
+          <a class="btn" href="docs/index.html">Get started in the docs</a>
+          <a class="btn ghost" href="https://github.com/devproof/devproofai" target="_blank" rel="noopener">View on GitHub ↗</a>
+        </div>
+
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <a class="lockup" href="index.html">
+      <svg aria-hidden="true"><use href="#mark"/></svg>
+      <span>
+        <span class="lk-word">DEVPROOF<span class="ai">.AI</span></span>
+        <span class="lk-tag">Own your scalable AI</span>
+      </span>
+    </a>
+    <nav aria-label="Footer">
+      <a href="index.html#agents">Managed agents</a>
+      <a href="index.html#hosting">Model hosting</a>
+      <a href="compare.html">Compare</a>
+      <a href="videos.html">Videos</a>
+      <a href="docs/index.html">Docs</a>
+      <a href="https://github.com/devproof/devproofai">GitHub</a>
+      <a href="contact.html">Contact</a>
+      <a href="imprint.html">Imprint</a>
+      <a href="privacy.html">Privacy</a>
+    </nav>
+    <div class="fine">© 2026 devproof.ai — own your scalable AI ∎</div>
+  </div>
+</footer>
+
+<script src="assets/consent.js"></script>
+</body>
+</html>
